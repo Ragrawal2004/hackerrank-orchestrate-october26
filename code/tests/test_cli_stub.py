@@ -59,10 +59,16 @@ class StubCliTests(unittest.TestCase):
         nums = [int(i.split("_")[1]) for i in ids]
         self.assertEqual(nums, sorted(nums))
 
-    def test_stub_rows_not_applicable_empty(self):
+    def test_stub_rows_only_the_ten_non_deletions_are_not_applicable(self):
+        na = [r[0] for r in self.rows[1:] if r[1] == "NOT_APPLICABLE"]
+        self.assertEqual(na, [f"case_{n}" for n in range(533, 543)])
         for r in self.rows[1:]:
-            self.assertEqual(r[1], "NOT_APPLICABLE")
             self.assertEqual(r[2], "[]")
+            self.assertEqual(r[1], "NOT_APPLICABLE" if r[0] in na else "INCOMPLETE")
+
+    def test_prints_the_intent_report(self):
+        self.assertIn("Agreement (LLM vs prefilter)", self.proc.stdout)
+        self.assertIn("NON_DELETION by source", self.proc.stdout)
 
     def test_dataset_untouched(self):
         self.assertEqual(tree_fingerprint(DATASET), self.before)

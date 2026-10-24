@@ -3,7 +3,7 @@ import csv
 import sys
 from pathlib import Path
 
-from . import config, envfile, llm, loaders
+from . import config, diagnostics, envfile, intent, llm, loaders
 
 HEADER = ["case_id", "deletion_status", "steps_json"]
 
@@ -45,7 +45,14 @@ def main(argv=None):
         wanted = {c.strip() for c in args.cases.split(",") if c.strip()}
         requests = [r for r in requests if r["case_id"] in wanted]
     requests.sort(key=lambda r: loaders.case_sort_key(r["case_id"]))
-    # Stub: the pipeline is not built yet, so every case is NOT_APPLICABLE.
-    write_output(out, [[r["case_id"], "NOT_APPLICABLE", "[]"] for r in requests])
+    (cfg.runs_dir / diagnostics.FILE_NAME).unlink(missing_ok=True)  # diagnostics are per run
+    results = intent.classify_all(requests, cfg.intent_model, not cfg.no_llm, cfg.runs_dir)
+    non_deletion = {r["case_id"] for r in results if r["label"] == "NON_DELETION"}
+    # Stub: the rest of the pipeline is not built yet. Non-deletion requests are final
+    # (NOT_APPLICABLE, []); every other case gets a placeholder status until T5+ fills it in.
+    write_output(out, [[r["case_id"],
+                        "NOT_APPLICABLE" if r["case_id"] in non_deletion else "INCOMPLETE", "[]"]
+                       for r in requests])
+    print(intent.format_report(intent.report(results)))
     print(f"wrote {len(requests)} rows to {out}")
     return 0
