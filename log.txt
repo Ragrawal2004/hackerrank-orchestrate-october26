@@ -139,3 +139,95 @@ branch=feature/agent
 repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
 worktree=main
 parent_agent=none
+
+## [2026-10-24T13:55:54Z] Ensure .env is gitignored
+
+User Prompt (verbatim, secrets redacted):
+grep -n "^\.env$" .gitignore || echo ".env" >> .gitignore
+git check-ignore .env
+
+Agent Response Summary:
+Ran the two commands. There was no .gitignore, so it was created containing a single line ".env", and git check-ignore confirms .env is ignored (exit 0). No .env file exists yet; nothing was committed.
+
+Actions:
+* Created .gitignore (".env")
+* Ran git check-ignore .env
+
+Context:
+tool=Claude Code
+model=claude-opus-5-5
+branch=feature/agent
+repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
+worktree=main
+parent_agent=none
+
+## [2026-10-24T14:03:32Z] SESSION START
+
+tool=Claude Code
+model=claude-sonnet-5-5
+Repo Root: /Users/rounakagrawal/hackerrank-orchestrate-october26
+Branch: feature/agent
+Worktree: main
+Parent Agent: none
+Language: py
+Time Remaining: not configured
+
+## [2026-10-24T14:07:53Z] T1+T2 test-first: scaffold, config, fact-store loader
+
+User Prompt (verbatim, secrets redacted):
+Read AGENTS.md, CLAUDE.md, docs/SPEC.md and docs/DESIGN.md. Plan T1 and T2 only (repo skeleton and config, then the fact-store loader, per DESIGN §11). Test-first: write the tests from the spec before the code, show me they fail, then implement. No LLM calls, and do not read or print .env. Do not touch dataset/ and do not start any task after T2. Show the plan and stop for approval before writing code. After approval, make one commit for T1+T2 only after I say OK, adding named files, never git add ..
+
+Agent Response Summary:
+Planned T1+T2, got approval, wrote 61 unittest tests from the spec first and showed them failing (ModuleNotFoundError ghost, empty main.py). Then implemented config, stub CLI, SQLite fact store, CSV loaders, activity detail parser and identity resolution. The tests caught a second LINK_RESOURCE_IDENTITY phrasing, which was fixed; all 61 tests pass. No commit made; waiting for the user's OK.
+
+Actions:
+* Created code/ghost/{__init__,config,cli,store,loaders,activity_parse,identity}.py, code/tests/*.py; edited code/main.py, .gitignore, README.md
+* Ran unittest (red, then green), stub CLI twice (byte-identical), read-only dataset inspection
+
+Context:
+tool=Claude Code
+model=claude-sonnet-5-5
+branch=feature/agent
+repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
+worktree=main
+parent_agent=none
+
+## [2026-10-24T14:12:24Z] Verify T1+T2, mutation checks, DESIGN §1 fix, commit
+
+User Prompt (verbatim, secrets redacted):
+Before I approve the commit, show me: (1) python3 -m unittest discover -s code/tests -t code -v full output and the test count; (2) git status --short and git diff --stat; (3) the list of distinct activity details phrasings the parser handles, with the count of rows for each kind; (4) the exact columns of the activity table versus DESIGN §1, with the reason for each difference; (5) the case that matches both current and historical email, and proof that 418 + 100 = 518 with no overlap. Then run these mutation checks one at a time, restoring the code after each, and report whether the tests failed: (a) remove the numeric sort in the CLI; (b) remove email lowercasing in identity resolution; (c) remove the as_of guard; (d) make the loader write a file into dataset/; (e) make the parser mislabel one phrasing. Any mutation that is not caught means a test must be strengthened first. No commit yet.
+
+Agent Response Summary:
+Showed 61 passing tests, git state, parser phrasings and counts, activity columns versus DESIGN, and the case_34 overlap proof. Mutation (a) was not caught because the real file is already in numeric order, so a shuffled-input CLI test was added (62 tests); all other mutations were caught and code was restored byte-identical. The temporary file written into dataset/ by mutation (d) was deleted.
+
+Actions:
+* Ran unittest, read-only dataset queries, mutation script in the scratchpad
+* Edited code/tests/test_cli_stub.py (added test_sorts_shuffled_input_numerically)
+
+Context:
+tool=Claude Code
+model=claude-sonnet-5-5
+branch=feature/agent
+repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
+worktree=main
+parent_agent=none
+
+## [2026-10-24T14:12:24Z] Update DESIGN §1 activity row and commit T1+T2
+
+User Prompt (verbatim, secrets redacted):
+OK to commit. First update the activity table description in docs/DESIGN.md §1 to match the code: source_system and target_system replace system_id, linked_user_id is added, and result is stored as reported_result (a claim). Change nothing else in DESIGN. Then commit with named files only: code/main.py, code/ghost/.py, code/tests/.py, .gitignore, README.md, docs/DESIGN.md and log.txt. Do not add runs/, __pycache__, or .env. Show git diff --stat and git status --short before the commit, then git log --oneline -3 after. Add the session's Co-Authored-By lines to the commit message. Then stop.
+
+Agent Response Summary:
+Updated only the activity row of DESIGN §1 to match the code (the code column is named result and holds the CSV reported_result). Committed T1+T2 with named files only.
+
+Actions:
+* Edited docs/DESIGN.md (§1 activity row)
+* git add of named files, git commit
+
+Context:
+tool=Claude Code
+model=claude-sonnet-5-5
+branch=feature/agent
+repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
+worktree=main
+parent_agent=none

@@ -155,3 +155,15 @@ Before submitting, confirm that:
 - `code.zip` includes your runnable code, `README.md`, `code/evaluation/evaluation_report.md`, and `code/evaluation/usage_report.md`;
 - `log.txt` follows the `AGENTS.md` turn format and is uploaded to the `chat_transcript` slot; and
 - no API keys, credentials, real personal data, or sensitive configuration values are included.
+
+## Setup and run (this solution)
+
+Python 3 standard library only (no install step). `pdftotext` and an `ANTHROPIC_API_KEY` environment variable are only needed by later pipeline stages.
+
+```bash
+python3 code/main.py                       # writes output.csv at the repo root
+python3 code/main.py --out /path/out.csv --cases case_33,case_34
+python3 -m unittest discover -s code/tests -t code -v   # run the tests
+```
+
+Flags: `--dataset DIR`, `--out FILE`, `--cases IDS`, `--link-fallback guess|omit`, `--category-llm on|off`, `--no-llm`, `--cold`. Environment: `LINK_FALLBACK`, `CATEGORY_LLM`, `GHOST_INTENT_MODEL`, `GHOST_CATEGORY_MODEL`, `GHOST_SCREENSHOT_MODEL`, `ANTHROPIC_API_KEY`; CLI flags override env values. Rows are sorted by the numeric part of `case_id`. Right now the pipeline is a stub that marks every case `NOT_APPLICABLE`.
