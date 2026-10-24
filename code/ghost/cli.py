@@ -3,7 +3,7 @@ import csv
 import sys
 from pathlib import Path
 
-from . import config, diagnostics, envfile, intent, llm, loaders
+from . import config, diagnostics, envfile, intent, llm, loaders, steps
 
 HEADER = ["case_id", "deletion_status", "steps_json"]
 
@@ -51,7 +51,8 @@ def main(argv=None):
     # Stub: the rest of the pipeline is not built yet. Non-deletion requests are final
     # (NOT_APPLICABLE, []); every other case gets a placeholder status until T5+ fills it in.
     write_output(out, [[r["case_id"],
-                        "NOT_APPLICABLE" if r["case_id"] in non_deletion else "INCOMPLETE", "[]"]
+                        "NOT_APPLICABLE" if r["case_id"] in non_deletion else "INCOMPLETE",
+                        steps.serialize_steps([])]
                        for r in requests])
     print(intent.format_report(intent.report(results)))
     print(f"wrote {len(requests)} rows to {out}")

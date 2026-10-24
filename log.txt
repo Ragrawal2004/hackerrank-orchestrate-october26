@@ -573,3 +573,35 @@ branch=feature/agent
 repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
 worktree=main
 parent_agent=none
+
+## [2026-10-24T18:00:00Z] SESSION START
+
+tool=Claude Code
+model=claude-sonnet-5-5
+Repo Root: /Users/rounakagrawal/hackerrank-orchestrate-october26
+Branch: feature/agent
+Worktree: main
+Parent Agent: none
+Language: py
+Time Remaining: not configured
+
+## [2026-10-24T18:40:00Z] T5: step ordering, serialization, invariant checker
+
+User Prompt (verbatim, secrets redacted):
+Read AGENTS.md, CLAUDE.md, docs/SPEC.md and docs/DESIGN.md (the step, ordering and serialization parts, §5, §8.2 invariants, §11 T5). Plan T5 only: step ordering, serialization, and the invariant checker. Ordering is: phase (FINDING, REMEDIATION, VERIFICATION), then the canonical operation order, then system_id, then resource_id as a plain string. step_no runs 1..n. FINDING steps cite a file_id; remediation steps and future verification steps use “”. COMPLETE has only cited verification steps (with the one logged guessed_account_uncited exception), and NOT_APPLICABLE is []. Serialize steps_json deterministically (fixed key order, compact separators). The invariant checker runs over any output.csv and reports each violated invariant with the case_ids. Done when: the invariants pass on the stub output, and the sample gold (dataset/sample_output.csv) passes the invariants. Test-first with small synthetic cases for each invariant and each violation, then mutation checks on a throwaway copy. Read the sample gold read-only to confirm the canonical operation order and the ordering rule before designing. Make no LLM calls. Do not read .env. No commit until I say OK. Show the plan and wait.
+
+Agent Response Summary:
+Read the specs and the sample gold read-only (0 ordering deviations over 193 steps; gold key order varies, whitespace is compact), wrote the plan, and after approval implemented T5 test-first. Added ghost/steps.py (vocabulary, ordering, numbering, serialization) and ghost/invariants.py (S1-S9, P1-P5, E1 checker with per-invariant case_id report), plus evaluation/main.py --invariants. The stub passes only with --allow-stub (it emits INCOMPLETE with [], which strict P1/P3 rightly reject); the sample gold passes strictly. 37/37 scripted mutations on a scratchpad copy of the gold were flagged. Full suite 465 tests OK. Nothing committed; no LLM calls; .env not read.
+
+Actions:
+* Wrote code/ghost/steps.py, code/ghost/invariants.py, code/tests/test_steps.py, code/tests/test_output_invariants.py, code/tests/test_invariants_cli.py
+* Edited code/evaluation/main.py (--invariants and flags), code/ghost/cli.py (stub uses steps.serialize_steps)
+* Ran unittest (red, then green), stub CLI with --no-llm, invariants on stub and sample gold, mutation script in the scratchpad
+
+Context:
+tool=Claude Code
+model=claude-sonnet-5-5
+branch=feature/agent
+repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
+worktree=main
+parent_agent=none
