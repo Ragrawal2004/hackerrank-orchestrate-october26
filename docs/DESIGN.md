@@ -26,8 +26,8 @@ case row ──► intent ──► identity ──► DOSSIER(case, audit_at)  
 ```
 
 - **Language:** Python 3 (stdlib `sqlite3`, `json`, `csv`, `hashlib`).
-- **External tools:** `pdftotext` for PDFs, and an LLM (Anthropic SDK) for request intent and screenshots only (A13).
-- **Without an API key** the run still completes: the deterministic intent fallback is used, multimodal extraction is skipped, and both are logged.
+- **External tools:** `pdftotext` for PDFs, and an LLM (Anthropic SDK, reached only through `llm.call`) for request intent, screenshot/PDF extraction and optional category disambiguation (A13).
+- **Without an API key** the run still completes: the deterministic intent fallback is used, multimodal extraction is skipped, and both are logged. Determinism comes from the response cache (`runs/cache/`) and the prefilter override (§2), not from sampling parameters: the API call sends none.
 
 ## 1. Master fact store
 The store is built once per run from `dataset/` and holds no per-case state. It is an in-memory SQLite database, so it can also be dumped to `runs/facts.sqlite` for debugging. Adapters write **only** to it.
@@ -149,17 +149,17 @@ For each linked resource:
 - **Serialization:** `json.dumps(steps, ensure_ascii=False, separators=(",", ":"))` with fixed key order. CSV is written with `csv.writer` (minimal quoting), rows sorted by numeric `case_id` (A1), at the repo-root `output.csv`.
 
 ## 6. Usage counter
-- Every LLM call goes through `llm.call(purpose, model, messages, case_id)`. Nothing else imports the SDK. A grep check in the invariant suite enforces this.
+- Every LLM call goes through `llm.call(purpose, model, prompt, case_id, schema)`. It returns the reply parsed and validated against `schema`, and raises `LLMUnavailable` on any error, timeout or invalid reply so the caller uses its deterministic path (retries are bounded; the SDK is imported lazily inside `llm.py`). Nothing else imports the SDK. A grep check in the invariant suite enforces this.
 - Each call appends a row to `runs/usage.jsonl`:
-  `ts, run_id, purpose (intent|screenshot|pdf), case_id/file_id, provider, model, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, latency_ms, cached_response (bool), error`.
+  `ts, purpose (intent|category|screenshot|pdf), model, case_id, input_tokens, output_tokens, cache_hit (bool), error, run_id`. One line is written per API attempt (a failed attempt logs the exception class name in `error`; a reply that fails validation keeps the tokens it cost, with `error=BadResponse`) and one per cache hit.
   The token counts come from the API response `usage` field, never from estimates.
-- Responses are cached by `sha256(model + prompt + image)` in `runs/llm_cache/` for determinism. **The final run is cold** (`--cold`), so `usage.jsonl` reflects real calls.
-- `code/evaluation/usage_report.py` aggregates per model and overall: calls, input and output tokens, total and average tokens per request (÷ 518), and cost from a per-model price table in `code/ghost/config.py`. The table is filled in from current published pricing at implementation time; no numbers are assumed here. The script renders `code/evaluation/usage_report.md`.
+- Responses are cached by `sha256(model, prompt, params)` in `runs/cache/`, where `params` = `{max_tokens, schema}` (no sampling parameters are sent; image input extends the key when it is added in T17). A cache hit makes no API call and logs zero tokens. `--cold` never reads the cache but still writes it. **The final run is cold** (`--cold`), so `usage.jsonl` reflects real calls.
+- `code/evaluation/usage_report.py` aggregates per model and overall: calls, input and output tokens, total and average tokens per request (÷ 518), and cost from a per-model price table in `code/ghost/config.py`. A cache hit counts as zero calls and zero cost, and total calls are shown separately from total cache hits. The price table carries a source URL and date per model, no numbers are assumed, and the report fails loudly while any price is missing. The script renders `code/evaluation/usage_report.md`.
 - Model plan (expected calls in a cold full run):
-  - intent: `claude-haiku-5-5`, temperature 0, **one call for each of the 518 requests**;
+  - intent: `claude-haiku-5-5`, **one call for each of the 518 requests**;
   - screenshots: `claude-sonnet-5-5`, about 11 calls;
   - category disambiguation (§4.1): `claude-haiku-5-5`, 0 calls by default, and only for the ambiguous records when `CATEGORY_LLM=on`.
-  All models are configurable through env vars. `purpose` ∈ intent | screenshot | category.
+  All models are configurable through env vars. `purpose` ∈ intent | category | screenshot | pdf.
 
 ## 7. Diagnostics
 `runs/diagnostics.jsonl` has one line per case:
@@ -167,7 +167,7 @@ For each linked resource:
 - linked resources with method and `confidence`;
 - every L1 pick (method, candidates, competitors);
 - events: A8 conflicts, Rule O ambiguity, unciteable steps, `retained_missing` (A9), `intent_disagreement`, `category_llm`, MA ties (`analytics_unresolved`), skipped multimodal files, recreation reopens;
-- LLM calls.
+- LLM calls (`purpose`, `cache_hit`, `error`; token counts stay in `runs/usage.jsonl`).
 
 `runs/` is gitignored and not shipped. A summary table (counts per flag) is copied into `evaluation_report.md`.
 
