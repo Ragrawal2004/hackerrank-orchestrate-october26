@@ -53,3 +53,25 @@ repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
 worktree=main
 parent_agent=none
 
+
+## [2026-10-24T13:30:20Z] Record U3/A6 decisions, family discovery, linking experiment
+
+User Prompt (verbatim, secrets redacted):
+Update SPEC.md: record decision U3 (per-record timestamps decide use for linking and state; manifest time decides citations only; never cite a file whose manifest time is after audit_at), approve A6 (Rule E then Rule O, flagged case_04 exception), and check whether e06's inner timestamps recover case_09. Then add docs/FAMILY_DISCOVERY.md: for all 518 requests, find the evidence files captured shortly before audit_at, group cases by that file's type and structure, and list families with no sample plus counts. Then add docs/LINKING_EXPERIMENT.md testing whether activity_id adjacency or offset from reported_at deterministically picks the right candidate for the 25 U1 steps, validated on held-out families. Use scratch scripts outside code/. No solution code. Stop for review.
+
+Agent Response Summary:
+Updated SPEC.md: added the U3 two-clock decision and approved A6 (Rule E, then Rule O, with case_04 flagged). Confirmed that e06's inner lines (stamped 09-16T08:52–08:57, before audit_at) recover case_09's audit_record_4902 link and account_3960 404. Wrote FAMILY_DISCOVERY.md: 19 anchor/companion families in blocks of 10 case ids; 369 of 518 evaluation cases (71 %) fall in shapes with no sample; post-audit trap families F-B4/F-D4 are flagged. Wrote LINKING_EXPERIMENT.md: neither activity_id adjacency nor reported_at offset is deterministic. Only "elimination + unique candidate" (M6) is precise (151/152), but it fires on 39 of 270 true-U1 evaluation cases. Recommendation: use M6 as a flagged A5 fallback and abstain otherwise. Note: earlier entries recorded branch=main; the actual branch is feature/agent.
+
+Actions:
+* Edited docs/SPEC.md (U3 decision, A6 approved, e06/case_09 check)
+* Created docs/FAMILY_DISCOVERY.md
+* Created docs/LINKING_EXPERIMENT.md
+* Ran scratch scripts in the session scratchpad (family_scan.py, late_inner.py, family_sig.py, family_comp.py, link_truth.py, link_experiment*.py); nothing added under code/
+
+Context:
+tool=Claude Code
+model=claude-opus-5-5
+branch=feature/agent
+repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
+worktree=main
+parent_agent=none
