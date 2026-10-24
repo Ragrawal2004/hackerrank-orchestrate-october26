@@ -39,9 +39,9 @@ ORDER = list(TITLES)
 
 NOT_CHECKED = (
     "every deletion case has an account step or a logged link_unresolved (needs T8/T16)",
-    "no retained category is ever DELETEd (needs the policy engine, T8)",
-    "no fact dated after audit_at was used; trap families F-B4/F-D4 (needs the dossier, T7)",
-    "two runs give a byte-identical output.csv (determinism, from T8 on)",
+    "no retained category is ever DELETEd (enforced by an assert in policy.to_steps, T8)",
+    "no fact dated after audit_at was used; trap families F-B4/F-D4 (dossier.assert_clock, T7)",
+    "determinism: two runs give a byte-identical output.csv (test_cli_pipeline.test_deterministic)",
 )
 
 SKIP_REASONS = {
@@ -56,7 +56,7 @@ class Result:
         self.violations = []
         self.skipped = {}
         self.not_checked = list(NOT_CHECKED)
-        self.stats = {"rows": 0, "guessed_account_uncited": 0}
+        self.stats = {"rows": 0, "guessed_account_uncited": 0, "no_steps_excused": 0}
 
     def add(self, invariant, case_id, detail):
         self.violations.append(Violation(invariant, case_id, detail))
@@ -99,19 +99,28 @@ def load_evidence_times(dataset_dir):
     return times
 
 
-def load_guessed_uncited(path):
-    """{(case_id, resource_id)} for every guessed_account_uncited event; empty if no file."""
+def _load_events(path, name):
     p = Path(path)
     if not p.exists():
-        return set()
-    out = set()
+        return []
+    out = []
     for line in p.read_text(encoding="utf-8").splitlines():
         if not line.strip():
             continue
         ev = json.loads(line)
-        if isinstance(ev, dict) and ev.get("event") == "guessed_account_uncited":
-            out.add((ev["case_id"], ev["resource_id"]))
+        if isinstance(ev, dict) and ev.get("event") == name:
+            out.append(ev)
     return out
+
+
+def load_guessed_uncited(path):
+    """{(case_id, resource_id)} for every guessed_account_uncited event; empty if no file."""
+    return {(ev["case_id"], ev["resource_id"]) for ev in _load_events(path, "guessed_account_uncited")}
+
+
+def load_no_steps(path):
+    """{case_id} for every no_steps event (a deletion case the pipeline could not state)."""
+    return {ev["case_id"] for ev in _load_events(path, "no_steps")}
 
 
 # ---------------------------------------------------------------- helpers
@@ -217,10 +226,13 @@ def _check_header_and_ids(header, rows, expected_case_ids, res):
             res.add("S2", cid, "case_id is not in the request file")
 
 
-def _check_case_status(cid, status, parsed, res, allow_stub, guessed, used):
+def _check_case_status(cid, status, parsed, res, allow_stub, guessed, used, no_steps):
     if status == "NOT_APPLICABLE":
         if parsed:
             res.add("P1", cid, "NOT_APPLICABLE but steps_json is not []")
+        return
+    if not parsed and status == "INCOMPLETE" and cid in no_steps:
+        res.stats["no_steps_excused"] += 1
         return
     if not parsed:
         if allow_stub:
@@ -314,10 +326,11 @@ def _check_evidence(cid, parsed, times, audit_at, res):
 
 
 def check_table(header, rows, expected_case_ids=None, evidence_times=None, audit_at=None,
-                guessed_uncited=None, allow_stub=False):
+                guessed_uncited=None, allow_stub=False, no_steps=None):
     res = Result()
     res.stats["rows"] = len(rows)
     guessed = set(guessed_uncited or ())
+    no_steps = set(no_steps or ())
     used = set()
     e1_on = evidence_times is not None and audit_at is not None
     if not e1_on:
@@ -347,7 +360,7 @@ def check_table(header, rows, expected_case_ids=None, evidence_times=None, audit
         if keys != sorted(keys):
             res.add("S8", cid, "steps are not in the canonical order")
         if status in STATUSES:
-            _check_case_status(cid, status, parsed, res, allow_stub, guessed, used)
+            _check_case_status(cid, status, parsed, res, allow_stub, guessed, used, no_steps)
             _check_conflicts(cid, parsed, res)
         if e1_on:
             _check_evidence(cid, parsed, evidence_times, audit_at, res)
@@ -364,7 +377,8 @@ def check_file(path, requests_path=None, dataset_dir=None, diagnostics_path=None
         times = load_evidence_times(dataset_dir)
         audit = load_audit_at(requests_path)
     guessed = load_guessed_uncited(diagnostics_path) if diagnostics_path else set()
-    return check_table(header, rows, expected, times, audit, guessed, allow_stub)
+    no_steps = load_no_steps(diagnostics_path) if diagnostics_path else set()
+    return check_table(header, rows, expected, times, audit, guessed, allow_stub, no_steps)
 
 
 # ---------------------------------------------------------------- report
@@ -404,6 +418,8 @@ def format_report(res, name):
         else:
             out.append(f"PASS {i} {TITLES[i]}")
     out.append(f"guessed_account_uncited exceptions used: {res.stats['guessed_account_uncited']}")
+    out.append(f"no_steps rows excused (INCOMPLETE [] logged in diagnostics): "
+               f"{res.stats['no_steps_excused']}")
     out.append("NOT CHECKED YET:")
     out.extend(f"  - {n}" for n in res.not_checked)
     cases = {v.case_id for v in res.violations}

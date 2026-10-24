@@ -68,6 +68,10 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(cfg.default_output, cfg.repo_root / "output.csv")
         self.assertEqual(cfg.runs_dir, cfg.repo_root / "runs")
 
+    def test_runs_dir_env_override(self):
+        cfg = config.build_config(environ={"GHOST_RUNS_DIR": "/tmp/ghost-runs-x"})
+        self.assertEqual(str(cfg.runs_dir), "/tmp/ghost-runs-x")
+
 
 if __name__ == "__main__":
     unittest.main()

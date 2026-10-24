@@ -94,5 +94,5 @@ def build_config(cli_link_fallback=None, cli_category_llm=None, no_llm=False,
         has_api_key=bool(env.get("ANTHROPIC_API_KEY")),
         dataset_dir=root / "dataset",
         default_output=root / "output.csv",
-        runs_dir=root / "runs",
+        runs_dir=Path(env["GHOST_RUNS_DIR"]) if env.get("GHOST_RUNS_DIR") else root / "runs",
     )

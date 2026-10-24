@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 
 from tests.helpers import DATASET, REPO_ROOT, tree_fingerprint
-from tests.test_cli_stub import run_cli
+from tests.test_cli_pipeline import run_cli
 
 EVAL = REPO_ROOT / "code" / "evaluation" / "main.py"
 

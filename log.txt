@@ -777,3 +777,75 @@ branch=feature/agent
 repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
 worktree=main
 parent_agent=none
+
+## [2026-10-24T17:50:23Z] SESSION START
+
+tool=Claude Code
+model=claude-opus-5-5
+Repo Root: /Users/rounakagrawal/hackerrank-orchestrate-october26
+Branch: feature/agent
+Worktree: main
+Parent Agent: none
+Language: py
+Time Remaining: not configured
+
+## [2026-10-24T17:50:23Z] Slash commands sent as message text
+
+User Prompt (verbatim, secrets redacted):
+//model opus
+/rename t08-policy
+
+Agent Response Summary:
+The user's input looked like built-in CLI commands (/model, /rename) that were sent as message text instead of being run. These are not skills, so I can't run them. I told the user to enter each one on its own line in the prompt. No code changes were made.
+
+Actions:
+* Appended session start and turn entries to log.txt
+
+Context:
+tool=Claude Code
+model=claude-opus-5-5
+branch=feature/agent
+repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
+worktree=main
+parent_agent=none
+
+## [2026-10-24T17:55:08Z] Plan T8: policy engine, status, step generation, end-to-end wiring
+
+User Prompt (verbatim, secrets redacted):
+Read AGENTS.md, CLAUDE.md, docs/SPEC.md, docs/DESIGN.md (§4 policy, §5 steps and status, §11 T8) and the T5 and T7 code (steps.py, invariants.py, dossier.py). Plan T8 only: the policy engine, status and step generation, wired end to end into code/main.py. [...full prompt as pasted: category from content, 15 rules, dossier states decide findings, steps via steps.py, status rules, A9 retained_missing, wire intent/dossier/policy/steps, done when it runs on an empty fact store and invariants pass without --allow-stub for NOT_APPLICABLE rows, test-first, mutation checks on a throwaway copy, no extra LLM calls, do not read .env, no commit until OK, show the plan and wait.]
+
+Agent Response Summary:
+Read the design docs and the T5/T7 code, and checked which verification operations the sample gold uses for each system (backups get only VERIFY_RESTORE_BLOCKED). Asked how cases with no steps should be handled; the user chose INCOMPLETE [] with a no_steps diagnostics excuse, so --allow-stub is no longer needed. Wrote the T8 plan: policy.py (category, rules, compliance matrix, A9, status, to_steps), CLI wiring, the invariant excuse, tests and a mutation script. No code changed yet.
+
+Actions:
+* Read docs/SPEC.md, docs/DESIGN.md, code/ghost/{steps,dossier,invariants,cli,store,diagnostics}.py, tests/fact_builder.py
+* Wrote plan file ~/.claude/plans/pasted-content-id-2afc-read-agents-md-declarative-moth.md
+
+Context:
+tool=Claude Code
+model=claude-opus-5-5
+branch=feature/agent
+repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
+worktree=main
+parent_agent=none
+
+## [2026-10-24T18:14:41Z] Implement T8: policy engine, status, step generation, CLI wiring
+
+User Prompt (verbatim, secrets redacted):
+[Plan approved via ExitPlanMode; no new text. The approved plan is the T8 plan from the previous entry, with the user's choice "INCOMPLETE + logged excuse" for deletion cases that have no steps.]
+
+Agent Response Summary:
+Implemented T8 test-first. Added ghost/policy.py (category, required end state, compliance matrix, A9 retained_missing, status, to_steps), wired dossier and policy into the CLI, added the no_steps excuse to the invariant checker and a GHOST_RUNS_DIR override. A real run writes 518 rows (508 INCOMPLETE [] with a logged no_steps, 10 NOT_APPLICABLE) and the invariants pass without --allow-stub. A first mutation run was invalid because the copy had no AGENTS.md; I added a baseline-green check and re-ran: 12 of 12 mutations killed. No commit made.
+
+Actions:
+* Added code/ghost/policy.py and code/tests/test_policy.py
+* Edited code/ghost/{cli,config,invariants}.py, code/evaluation/main.py, tests (test_cli_stub renamed to test_cli_pipeline)
+* Ran full suite (574 OK), a real --no-llm run into the scratchpad, strict invariants check, determinism cmp, mutation script in the scratchpad
+
+Context:
+tool=Claude Code
+model=claude-sonnet-5-5
+branch=feature/agent
+repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
+worktree=main
+parent_agent=none

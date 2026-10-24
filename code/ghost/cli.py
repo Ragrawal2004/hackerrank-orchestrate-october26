@@ -3,7 +3,10 @@ import csv
 import sys
 from pathlib import Path
 
-from . import config, diagnostics, envfile, intent, llm, loaders, steps
+from collections import Counter
+
+from . import (config, diagnostics, dossier, envfile, identity, intent, llm, loaders, policy,
+               steps)
 
 HEADER = ["case_id", "deletion_status", "steps_json"]
 
@@ -29,6 +32,48 @@ def write_output(path, rows):
         w.writerows(rows)
 
 
+def _log_events(runs_dir, case_id, events):
+    for ev in events:
+        fields = {k: v for k, v in ev.items() if k != "type"}
+        diagnostics.log_event(runs_dir, case_id, ev["type"], **fields)
+
+
+def audit_case(conn, rules, case, runs_dir):
+    """(status, steps_json, retained_missing, no_steps) for one deletion case; logs its events."""
+    cid = case["case_id"]
+    try:
+        d = dossier.build_dossier(conn, case)
+    except identity.UnknownIdentity as e:
+        diagnostics.log_event(runs_dir, cid, "no_identity", email=str(e))
+        diagnostics.log_event(runs_dir, cid, "no_steps", reason="no_identity")
+        return "INCOMPLETE", steps.serialize_steps([]), [], True
+    plan = policy.evaluate(d, rules)
+    _log_events(runs_dir, cid, d["events"])
+    _log_events(runs_dir, cid, plan["events"])
+    diagnostics.log_event(
+        runs_dir, cid, "dossier", user_id=d["user_id"], resolved_via=d["resolved_via"],
+        anchor_candidates=d["anchor_candidates"], account_linked=d["account_linked"],
+        clock=d["clock"],
+        resources=[{"system_id": e["system_id"], "resource_id": e["resource_id"],
+                    "category": e["category"], "basis": e["category_basis"],
+                    "required": e["required"], "observed": e["observed"],
+                    "verdict": e["verdict"], "finding": e["finding"],
+                    "confidence": e["confidence"]} for e in plan["entries"]])
+    no_steps = any(ev["type"] == "no_steps" for ev in plan["events"])
+    return plan["status"], steps.serialize_steps(plan["steps"]), plan["retained_missing"], no_steps
+
+
+def format_policy_summary(statuses, no_steps, retained_missing):
+    cases = sorted(retained_missing, key=loaders.case_sort_key)
+    records = sum(len(v) for v in retained_missing.values())
+    return "\n".join([
+        "Status: " + " ".join(f"{k}={statuses.get(k, 0)}"
+                              for k in ("COMPLETE", "INCOMPLETE", "NOT_APPLICABLE")),
+        f"no_steps: {no_steps} cases (INCOMPLETE with [])",
+        f"retained_missing: {len(cases)} cases / {records} records"
+        + (" (" + ", ".join(cases) + ")" if cases else "")])
+
+
 def main(argv=None):
     args = build_parser().parse_args(argv)
     envfile.load_dotenv(envfile.env_file_path(config.find_repo_root()))  # before build_config reads the env
@@ -48,12 +93,23 @@ def main(argv=None):
     (cfg.runs_dir / diagnostics.FILE_NAME).unlink(missing_ok=True)  # diagnostics are per run
     results = intent.classify_all(requests, cfg.intent_model, not cfg.no_llm, cfg.runs_dir)
     non_deletion = {r["case_id"] for r in results if r["label"] == "NON_DELETION"}
-    # Stub: the rest of the pipeline is not built yet. Non-deletion requests are final
-    # (NOT_APPLICABLE, []); every other case gets a placeholder status until T5+ fills it in.
-    write_output(out, [[r["case_id"],
-                        "NOT_APPLICABLE" if r["case_id"] in non_deletion else "INCOMPLETE",
-                        steps.serialize_steps([])]
-                       for r in requests])
+    conn = loaders.load_store(dataset)
+    rules = policy.load_rules(conn)
+    rows, statuses, retained_missing, no_steps = [], Counter(), {}, 0
+    for case in requests:
+        cid = case["case_id"]
+        if cid in non_deletion:
+            status, steps_json = "NOT_APPLICABLE", steps.serialize_steps([])
+        else:
+            status, steps_json, missing, empty = audit_case(conn, rules, case, cfg.runs_dir)
+            no_steps += empty
+            if missing:
+                retained_missing[cid] = missing
+                diagnostics.log_event(cfg.runs_dir, cid, "retained_missing_case", records=missing)
+        statuses[status] += 1
+        rows.append([cid, status, steps_json])
+    write_output(out, rows)
     print(intent.format_report(intent.report(results)))
+    print(format_policy_summary(statuses, no_steps, retained_missing))
     print(f"wrote {len(requests)} rows to {out}")
     return 0

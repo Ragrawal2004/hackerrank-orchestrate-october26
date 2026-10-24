@@ -40,7 +40,8 @@ def main(argv=None):
     p.add_argument("--dataset", type=Path, default=REPO_ROOT / "dataset",
                    help="dataset dir for the cited-evidence time check (invariants)")
     p.add_argument("--diagnostics", type=Path,
-                   help="diagnostics.jsonl; its guessed_account_uncited events excuse uncited steps")
+                   help="diagnostics.jsonl; its guessed_account_uncited events excuse uncited "
+                        "steps and its no_steps events excuse INCOMPLETE [] rows")
     p.add_argument("--allow-stub", action="store_true",
                    help="accept deletion rows with [] (stub output); never use for the final run")
     args = p.parse_args(argv)

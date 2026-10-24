@@ -329,6 +329,24 @@ class StatusTests(unittest.TestCase):
         self.assertEqual(r.violations, [])
         self.assertEqual(sorted(set(r.skipped) - {"E1"}), ["P1", "P3"])
 
+    def test_no_steps_excuses_only_logged_incomplete_rows(self):
+        rows = [row("case_2", "INCOMPLETE", []), row("case_3", "INCOMPLETE", []), good_na("case_4")]
+        r = run(rows, no_steps={"case_2"})
+        self.assertEqual(cases(r, "P1"), ["case_3"])
+        self.assertEqual(cases(r, "P3"), ["case_3"])
+        self.assertEqual(r.stats["no_steps_excused"], 1)
+
+    def test_no_steps_never_excuses_complete_or_not_applicable(self):
+        r = run([row("case_2", "COMPLETE", [])], no_steps={"case_2"})
+        self.assertEqual(cases(r, "P1"), ["case_2"])
+        bad = dict(good_incomplete("case_3"), deletion_status="NOT_APPLICABLE")
+        self.assertIn("P1", ids(run([bad], no_steps={"case_3"})))
+
+    def test_no_steps_does_not_hide_non_empty_problems(self):
+        no_finding = row("case_3", "INCOMPLETE", [
+            S("VERIFICATION", "VERIFY_RECORD_ABSENT", "account_service", "account_1")])
+        self.assertIn("P3", ids(run([no_finding], no_steps={"case_3"})))
+
     def test_allow_stub_is_off_by_default(self):
         self.assertNotEqual(run([row("case_2", "INCOMPLETE", [])]).violations, [])
 
@@ -605,6 +623,15 @@ class LoadersTests(unittest.TestCase):
             self.assertEqual(inv.load_guessed_uncited(p),
                              {("case_2", "account_1"), ("case_4", "account_9")})
 
+    def test_load_no_steps_reads_only_that_event(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d) / "diagnostics.jsonl"
+            p.write_text('{"case_id":"case_2","event":"no_steps","reason":"no_resources"}\n'
+                         '{"case_id":"case_3","event":"unciteable","resource_id":"search_1"}\n'
+                         '\n{"case_id":"case_5","event":"no_steps","reason":"unverified_deletion"}\n')
+            self.assertEqual(inv.load_no_steps(p), {"case_2", "case_5"})
+        self.assertEqual(inv.load_no_steps(Path("/nonexistent/diag.jsonl")), set())
+
     def test_load_guessed_uncited_missing_file_is_empty(self):
         self.assertEqual(inv.load_guessed_uncited(Path("/nonexistent/diag.jsonl")), set())
 
@@ -672,7 +699,7 @@ class RealDataTests(unittest.TestCase):
         self.assertEqual(phases, set(steps.PHASES))
 
     def test_stub_output_passes_with_allow_stub_and_fails_without(self):
-        from tests.test_cli_stub import run_cli
+        from tests.test_cli_pipeline import run_cli
         with tempfile.TemporaryDirectory() as d:
             out = Path(d) / "stub.csv"
             p = run_cli("--no-llm", "--out", str(out))
