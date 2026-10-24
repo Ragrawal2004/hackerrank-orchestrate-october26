@@ -14,6 +14,7 @@ import re
 import sqlite3
 
 from .. import identity, policy, store
+from . import common
 
 name = "replica_sql"
 FORMAT_JSON = "sql_replica_json"
@@ -23,11 +24,6 @@ J_COLS = ("resource_id", "origin_system", "collection_name", "record_json", "upd
 T_COLS = ("resource_id", "user_id", "full_name", "email", "phone", "account_status", "updated_at")
 IGNORED = ("BEGIN", "COMMIT", "PRAGMA")
 
-_EMAIL = re.compile(r"[\w.+'-]+@[\w-]+(?:\.[\w-]+)+")
-_EMAIL_ONLY = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
-_HASH = re.compile(r"^[0-9a-fA-F]{64}$")
-_USER = re.compile(r"^user_\d+$")
-_PHONE = re.compile(r"^\+?[\d\s().-]{7,}$")
 _CAPTURED = re.compile(r"^--\s*Captured at:\s*(\S+)", re.M)
 _TOPOLOGY = re.compile(r"^--\s*Database topology:\s*(\S+)", re.M)
 _REGION = re.compile(r"_replica_(\w+)$")
@@ -128,107 +124,19 @@ def detect(text):
     return shape[0] if shape else None
 
 
-# ---- classifying values -----------------------------------------------------------------------
+# ---- classifying values (shared with the bundle adapter) -------------------------------------
 
-def classify(value):
-    """(kind, normalised value) for an identifier-shaped string, else None."""
-    if not isinstance(value, str):
-        return None
-    v = value.strip()
-    if _EMAIL_ONLY.match(v):
-        return "email", v.lower()
-    if _HASH.match(v):
-        return "email_hash", v.lower()
-    if _USER.match(v):
-        return "user_id", v
-    if _PHONE.match(v):
-        return "phone", v
-    return None
-
-
-def _keys(*pairs, names=(), texts=()):
-    out = set()
-    for v in pairs:
-        c = classify(v)
-        if c:
-            out.add(c)
-    for n in names:
-        if isinstance(n, str) and n.strip():
-            out.add(("name", n.strip()))
-    for t in texts:
-        for e in _EMAIL.findall(t or ""):
-            out.add(("email", e.lower()))
-    return out
-
-
-def _lower(v):
-    return v.strip().lower() if isinstance(v, str) and v.strip() else v
-
-
-def _any(*vals):
-    return any(v not in (None, "") for v in vals)
-
-
-class _Skip(Exception):
-    """The row cannot be turned into an observation (counted as unparsed)."""
-
-
-def _record(collection, rec):
-    """(state, attrs, subject keys) of one record-json row."""
-    if collection == "customer_profiles":
-        return "PRESENT", {"name": rec.get("full_name"), "email": _lower(rec.get("email")),
-                           "phone": rec.get("phone")}, _keys(
-            rec.get("email"), rec.get("phone"), rec.get("customer_reference"),
-            names=[rec.get("full_name")])
-    if collection == "customer_search_documents":
-        doc = rec.get("document") or {}
-        return "PRESENT", {"email": _lower(doc.get("email"))}, _keys(
-            doc.get("email"), doc.get("customer_reference"), names=[doc.get("display_name")])
-    if collection == "customer_analytics_reports":
-        fields = {f: rec.get(f) for f in ("user_id", "email", "phone", "email_hash")}
-        state = "IDENTIFIABLE" if _any(*fields.values()) else "ANONYMIZED"
-        return state, {**fields, "email": _lower(fields["email"]),
-                       "email_hash": _lower(fields["email_hash"])}, _keys(*fields.values())
-    if collection == "support_conversations":
-        text = rec.get("message_text") or ""
-        emails = [e.lower() for e in _EMAIL.findall(text)]
-        return ("IDENTIFIABLE" if emails else "REDACTED"), {
-            "email": emails[0] if emails else None}, _keys(
-            rec.get("subject_reference"), texts=[text])
-    if collection == "ticket_attachments":
-        return "PRESENT", {}, _keys(rec.get("uploaded_by"))
-    if collection == "customer_export_jobs":
-        return "PRESENT", {}, _keys(rec.get("owner_email"))
-    if collection == "connector_configurations":
-        on = bool(rec.get("enabled"))
-        return ("ACTIVE" if on else "DISABLED"), {"enabled": on}, _keys(rec.get("subject_selector"))
-    if collection == "backup_catalog":
-        ok = bool(rec.get("restore_allowed"))
-        return ("RESTORABLE" if ok else "BLOCKED"), {"restore_allowed": ok}, _keys(
-            rec.get("subject_reference"))
-    if collection == "security_audit_events":
-        return "PRESENT", {}, _keys(rec.get("subject_reference"))
-    if collection == "retained_order_records":
-        return "PRESENT", {"hold_until": rec.get("retained_until")}, _keys(
-            rec.get("subject_reference"))
-    if collection == "deleted_customer_references":
-        fields = {f: rec.get(f) for f in ("name", "email", "phone", "email_hash")}
-        state = "IDENTIFIABLE" if _any(*fields.values()) else "REDACTED"
-        return state, {**fields, "email": _lower(fields["email"]),
-                       "email_hash": _lower(fields["email_hash"]),
-                       "subject_reference": rec.get("subject_reference")}, _keys(
-            rec.get("subject_reference"), fields["email"], fields["phone"], fields["email_hash"],
-            names=[fields["name"]])
-    raise _Skip(f"unknown collection {collection!r}")
+classify = common.classify
+_keys = common.keys
+_lower = common.lower
+_any = common.any_set
+_Skip = common.Skip
+_record = common.record
 
 
 # ---- ingest -----------------------------------------------------------------------------------
 
-def _clear(conn, file_id):
-    conn.execute("delete from subject_key where obs_id in "
-                 "(select obs_id from observation where file_id = ?)", (file_id,))
-    for t in ("observation", "join_key", "capture_scope", "parse_report"):
-        conn.execute(f"delete from {t} where file_id = ?", (file_id,))
+_clear = common.clear
 
 
 def ingest(conn, file_id, text):

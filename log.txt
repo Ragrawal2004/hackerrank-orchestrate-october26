@@ -903,3 +903,74 @@ branch=feature/agent
 repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
 worktree=main
 parent_agent=none
+
+## [2026-10-24T19:30:44Z] SESSION START
+
+tool=Claude Code
+model=claude-sonnet-5-5
+Repo Root: /Users/rounakagrawal/hackerrank-orchestrate-october26
+Branch: feature/agent
+Worktree: main
+Parent Agent: none
+Language: py
+Time Remaining: not configured
+
+## [2026-10-24T19:30:44Z] Switch model to sonnet
+
+User Prompt (verbatim, secrets redacted):
+/model sonnet
+
+Agent Response Summary:
+Session restarted via /clear with /model sonnet and /rename t10-bundles; both are built-in CLI commands handled by the harness. Appended session start and this entry; no code changes.
+
+Actions:
+* Appended SESSION START and turn entry to log.txt
+
+Context:
+tool=Claude Code
+model=claude-sonnet-5-5
+branch=feature/agent
+repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
+worktree=main
+parent_agent=none
+
+## [2026-10-24T19:40:28Z] T10 plan: snapshot bundle adapter (approved)
+
+User Prompt (verbatim, secrets redacted):
+/rename t10-bundles, then: "Read AGENTS.md, CLAUDE.md, docs/SPEC.md, docs/DESIGN.md (§3 adapters, adapter 2, §11 T10), docs/FAMILY_DISCOVERY.md, the T9 adapter (code/ghost/adapters/replica_sql.py) and its tests, and use it as the pattern. Plan T10 only: adapter 2, the snapshot bundle reader. [...rest of the pasted brief: detect bundles by structure, same fact-store fields as T9, unparsed accounting to zero, late-companion traps F-B4/F-D4 excluded, U3 early records usable, samples 23-32 explained and checked with the scorer, status mix before/after, test-first with synthetic fixtures, mutation checks on a throwaway copy with AGENTS.md and a passing baseline, no LLM, do not read .env, no commit until OK, show the plan and wait.]"
+
+Agent Response Summary:
+Read the design docs, T9 adapter and tests, and surveyed all 12 bundle files and the gold of samples 23-32 read-only. Wrote the plan (structure detection, record_at = snapshot own clock, scope per store with a mixed-store rule, ORH rows as state events without scope, traps left to the dossier clock gate, shared mapper extracted to adapters/common.py) and it was approved via ExitPlanMode. No code written yet.
+
+Actions:
+* Read docs, replica_sql.py, store.py, cli.py, evaluation/main.py; python read-only scans of dataset/evidence/records bundles and sample gold
+* Wrote plan file under ~/.claude/plans
+
+Context:
+tool=Claude Code
+model=claude-sonnet-5-5
+branch=feature/agent
+repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
+worktree=main
+parent_agent=none
+
+## [2026-10-24T19:55:59Z] T10 implemented, verified, mutation-checked (uncommitted)
+
+User Prompt (verbatim, secrets redacted):
+(approval of the T10 plan via ExitPlanMode; no new text)
+
+Agent Response Summary:
+Implemented adapter 2 test-first (47 new tests, red against a stub first): ghost/adapters/snapshot_bundle.py detects bundles by structure, record_at is each snapshot's own clock, scope per store with the mixed-store rule, history rows as state events without scope, unparsed accounting at 0 on all 12 files. Extracted the shared record mapper to adapters/common.py and added SPEC B1. Real run: status mix COMPLETE/INCOMPLETE/NOT_APPLICABLE 41/467/10 before to 55/453/10 after (no_steps 399 to 376); samples 31 and 32 match except the T16 account step; 38 of 46 gold resources of samples 23-32 are explained by usable bundle facts, 7 are T16 account links, and the case_27 trap record is excluded. 25 of 25 mutants killed on a throwaway copy with AGENTS.md and a green baseline. Nothing committed; no LLM calls; .env not read.
+
+Actions:
+* Added code/ghost/adapters/snapshot_bundle.py, code/ghost/adapters/common.py, code/tests/bundle_fixture.py, code/tests/test_adapter_snapshot_bundle.py
+* Edited replica_sql.py (shared mapper moved), adapters/__init__.py, tests/test_cli_pipeline.py (files=24), docs/SPEC.md (B1)
+* Ran full suite, CLI before/after with --no-llm and a missing GHOST_ENV_FILE, sample scorer, invariants, mutation script in scratchpad
+
+Context:
+tool=Claude Code
+model=claude-sonnet-5-5
+branch=feature/agent
+repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
+worktree=main
+parent_agent=none
