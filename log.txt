@@ -75,3 +75,45 @@ branch=feature/agent
 repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
 worktree=main
 parent_agent=none
+
+## [2026-10-24T13:55:00Z] Record linking decision L1; write DESIGN.md
+
+User Prompt (verbatim, secrets redacted):
+Record the linking decision in SPEC.md: M6 first, then M9 for ties, always emit the account step, flag every guess low-confidence in a diagnostics file, with a LINK_FALLBACK=guess|omit config flag. Then produce docs/DESIGN.md built on the anchor-file idea: a master fact store (schema), a per-case dossier cut at audit_at under the two-clock rule, one adapter per evidence format built in the volume order above, the policy engine, the step generator and ordering, the usage counter for every LLM call, and a validation plan (sample scoring plus invariants over all 518 plus at least three custom cases). List risks and a task list with one commit per task. No solution code. Stop for review.
+
+Agent Response Summary:
+Added decision L1 to SPEC.md §9: M6, then M9 for ties, with an M7/widened-window fallback; always emit the account step; guesses only produce verification steps and are flagged low-confidence in runs/diagnostics.jsonl; LINK_FALLBACK=guess|omit (default guess). Marked LINKING_EXPERIMENT.md as reviewed. Wrote docs/DESIGN.md: anchor-file core, fact-store schema, two-clock dossier, 8 adapters ordered by cases unlocked, policy engine, step generator/ordering/serialization, usage counter, diagnostics, validation plan (sample scoring, 518-case invariants, 5 custom cases, uncovered-family spot checks), risks, and tasks T1–T20 with one commit each. No solution code, no commits.
+
+Actions:
+* Edited docs/SPEC.md (L1 decision row)
+* Edited docs/LINKING_EXPERIMENT.md (status line)
+* Created docs/DESIGN.md
+
+Context:
+tool=Claude Code
+model=claude-opus-5-5
+branch=feature/agent
+repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
+worktree=main
+parent_agent=none
+
+## [2026-10-24T13:45:24Z] Revise DESIGN.md: intent LLM, A7 LLM, A9 count, relaxed scoring
+
+User Prompt (verbatim, secrets redacted):
+Update docs/DESIGN.md with: (1) swap T16 and T17; (2) intent: Haiku classifies all 518 requests, deterministic prefilter is the safety net, log disagreements, report agreement; (3) optional LLM disambiguation for ambiguous categories (A7), schema-validated, cached, deterministic fallback; (4) the engine reports how many cases have a missing retained record (A9); (5) add relaxed scoring ignoring evidence_id next to strict; (6) analytics: unique-match only (MA), omit on ties. No solution code. Stop for review.
+
+Agent Response Summary:
+Planned in plan mode, then edited DESIGN.md. Changes: T16 is now the linkers (L1 accounts + MA analytics) and T17 is multimodal. Haiku classifies all 518 intents, with the deterministic prefilter as fallback; disagreements are logged and the agreement rate is reported. Added §4.1 optional category LLM (CATEGORY_LLM, default off, constrained to candidates, schema-validated, cached, deterministic fallback). Added the retained_missing count (A9) to the run output, invariants and report. Added relaxed scoring (ignores evidence_id) next to strict. Analytics now uses MA only and emits no step on ties. Amended SPEC A13 and the L1 analytics wording so the documents agree. Note: the previous entry's timestamp (13:55Z) was typed by hand and is later than the real time; this entry uses date -u.
+
+Actions:
+* Edited plan file (~/.claude/plans/read-agents-md-readme-md-and-hashed-hare.md), approved via ExitPlanMode
+* Edited docs/DESIGN.md (§2, §4, §4.1 new, §6, §7, §8, §9, §10, §11)
+* Edited docs/SPEC.md (A13 amendment, L1 analytics wording)
+
+Context:
+tool=Claude Code
+model=claude-opus-5-5
+branch=feature/agent
+repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
+worktree=main
+parent_agent=none
