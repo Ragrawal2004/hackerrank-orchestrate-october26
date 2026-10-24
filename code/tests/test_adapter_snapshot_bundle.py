@@ -231,7 +231,7 @@ class ClockTests(unittest.TestCase):
                           bf.snap(T3, "account_service", "customer_profiles", [])])
         f, _ = load(text)
         self.assertEqual([o["record_at"] for o in obs(f.conn, "account_1")], [T1])
-        self.assertEqual(scopes(f.conn), [("account_service", T1, 1), ("account_service", T3, 1)])
+        self.assertEqual(scopes(f.conn), [("account_service", T1, 0), ("account_service", T3, 0)])
 
     def test_late_snapshot_is_stored_with_its_true_time(self):
         # The store holds no case; the dossier clock gate excludes it (see TrapTests).
@@ -313,18 +313,39 @@ class HistoryTests(unittest.TestCase):
 
 
 class ScopeTests(unittest.TestCase):
-    def test_empty_snapshot_gives_scope_and_omission(self):
+    def test_empty_snapshot_gives_a_partial_scope_row(self):
         f, _ = load(bf.bundle([bf.snap(T3, "account_service", "customer_profiles", [])]))
-        self.assertEqual(scopes(f.conn), [("account_service", T3, 1)])
+        self.assertEqual(scopes(f.conn), [("account_service", T3, 0)])
         self.assertEqual(obs(f.conn), [])
+
+    def test_bundle_scope_is_never_complete(self):
+        f, _ = load(bf.bundle([
+            bf.snap(T1, "account_service", "customer_profiles", [bf.profile("account_1", ANA)]),
+            bf.snap(T3, "account_service", "customer_profiles", []),
+            bf.snap(T3, "search_service", "customer_search_documents", [])]))
+        self.assertEqual(f.conn.execute("select count(*), coalesce(sum(complete), 0) "
+                                        "from capture_scope").fetchone(), (3, 0))
+
+    def test_bundle_omission_never_makes_absent(self):
+        # SPEC B1 (amended in T13): a later snapshot that leaves the record out, empty or not,
+        # proves nothing; the explicit earlier record keeps the state.
+        for later in ([], [bf.profile("account_2", "someone@example.com")]):
+            with self.subTest(empty=not later):
+                f = users()
+                load(bf.bundle([
+                    bf.snap(T1, "account_service", "customer_profiles", [bf.profile("account_1", ANA)]),
+                    bf.snap(T3, "account_service", "customer_profiles", later)]), facts=f)
+                r = res(dossier_for(f), "account_1")
+                self.assertEqual((r["state"], r["state_basis"]), ("PRESENT", "explicit"))
+                self.assertEqual(r["citation"]["rule_o"], [])
 
     def test_every_store_snapshot_has_a_scope_row(self):
         f, _ = load(bf.bundle([
             bf.snap(T3, "account_service", "customer_profiles", [bf.profile("account_1", ANA)]),
             bf.snap(T3, "search_service", "customer_search_documents", []),
             bf.snap(T3, "security_service", "security_audit_events", [bf.audit("audit_record_1")])]))
-        self.assertEqual(scopes(f.conn), [("account_service", T3, 1), ("search_service", T3, 1),
-                                          ("security_service", T3, 1)])
+        self.assertEqual(scopes(f.conn), [("account_service", T3, 0), ("search_service", T3, 0),
+                                          ("security_service", T3, 0)])
 
     def test_mixed_store_needs_all_its_collections_at_that_time(self):
         conv, att = "support_conversations", "ticket_attachments"
@@ -333,25 +354,25 @@ class ScopeTests(unittest.TestCase):
             bf.snap(T1, "support_platform", conv, [bf.support("support_1")]),
             bf.snap(T3, "support_platform", conv, [])]))
         # T3 has only conversations, so it cannot prove an attachment is gone.
-        self.assertEqual(scopes(f.conn), [("support_platform", T1, 1)])
+        self.assertEqual(scopes(f.conn), [("support_platform", T1, 0)])
 
     def test_mixed_store_with_both_collections_everywhere_is_scoped_at_each_time(self):
         conv, att = "support_conversations", "ticket_attachments"
         f, _ = load(bf.bundle([
             bf.snap(T1, "support_platform", conv, []), bf.snap(T1, "support_platform", att, []),
             bf.snap(T3, "support_platform", conv, []), bf.snap(T3, "support_platform", att, [])]))
-        self.assertEqual(scopes(f.conn), [("support_platform", T1, 1), ("support_platform", T3, 1)])
+        self.assertEqual(scopes(f.conn), [("support_platform", T1, 0), ("support_platform", T3, 0)])
 
     def test_single_collection_store_is_unaffected_by_other_stores(self):
         f, _ = load(bf.bundle([
             bf.snap(T1, "support_platform", "support_conversations", [bf.support("support_1")]),
             bf.snap(T3, "support_platform", "support_conversations", [])]))
-        self.assertEqual(scopes(f.conn), [("support_platform", T1, 1), ("support_platform", T3, 1)])
+        self.assertEqual(scopes(f.conn), [("support_platform", T1, 0), ("support_platform", T3, 0)])
 
     def test_duplicate_snapshot_times_give_one_scope_row(self):
         f, _ = load(bf.bundle([bf.snap(T3, "search_service", "customer_search_documents", []),
                                bf.snap(T3, "search_service", "customer_search_documents", [])]))
-        self.assertEqual(scopes(f.conn), [("search_service", T3, 1)])
+        self.assertEqual(scopes(f.conn), [("search_service", T3, 0)])
 
 
 def dossier_for(f, audit=AUDIT):
@@ -370,12 +391,13 @@ class TrapTests(unittest.TestCase):
         f = users()
         load(bf.bundle([
             bf.snap(T1, "account_service", "customer_profiles", [bf.profile("account_1", ANA)]),
-            bf.snap(T3, "account_service", "customer_profiles", []),
+            bf.snap(T3, "backup_restore_service", "operational_record_history", [
+                bf.history(T3, "account_service", "account_1", "USER_PROFILE", "NOT_FOUND", ANA)]),
             bf.snap(AFTER, "account_service", "customer_profiles", [bf.profile("account_1", ANA)])],
             exported_at=MANIFEST_LATE), facts=f)
         d = dossier_for(f)
         r = res(d, "account_1")
-        self.assertEqual(r["state"], "ABSENT")  # omission at T3 beats the explicit T1 record
+        self.assertEqual(r["state"], "ABSENT")  # explicit NOT_FOUND at T3 beats the T1 record
         self.assertGreaterEqual(d["clock"]["late_records_excluded"], 1)
         self.assertIsNone(r["citation"]["pick"])  # manifest after audit_at: never cited
 

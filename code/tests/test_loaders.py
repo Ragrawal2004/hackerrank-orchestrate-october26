@@ -93,9 +93,13 @@ class StoreTests(unittest.TestCase):
         self.assertEqual(count(self.conn, "select count(*) from identity where kind='user_id'"), 850)
 
     def test_tables_no_adapter_writes_yet_are_empty(self):
-        # replica_sql fills observation/subject_key/capture_scope/parse_report; it emits no join keys
-        for t in ("join_key", "extraction"):
-            self.assertEqual(count(self.conn, f"select count(*) from {t}"), 0, t)
+        self.assertEqual(count(self.conn, "select count(*) from extraction"), 0)
+
+    def test_only_the_log_adapter_writes_join_keys(self):
+        self.assertGreater(count(self.conn, "select count(*) from join_key"), 0)
+        self.assertEqual(count(self.conn,
+                               "select count(*) from join_key where file_id not in (select file_id "
+                               "from evidence_file where adapter='observability_log')"), 0)
 
     def test_replica_files_are_claimed_and_clean(self):
         self.assertEqual(count(self.conn, "select count(*) from evidence_file where adapter='replica_sql'"), 12)
@@ -107,7 +111,7 @@ class StoreTests(unittest.TestCase):
         ).fetchone()
         self.assertEqual(row[0], "evidence/logs/service_events_ap_south_20260915.log")
         self.assertEqual(row[1], "central_observability_export")
-        self.assertIsNone(row[2])
+        self.assertEqual(row[2], "log_obs_logfmt")
         self.assertEqual(row[3], "2026-09-15T11:59:39Z")
 
     def test_emails_lowercase_in_identity(self):

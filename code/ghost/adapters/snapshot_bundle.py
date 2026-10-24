@@ -7,6 +7,10 @@ Clock decision (SPEC B1, the U3 two-clock rule): every observation's record_at i
 the snapshot's captured_at (a history row's recorded_at), never the file's manifest time. The
 store holds no case, so records dated after some case's audit_at are written like any other and
 the dossier's clock gate leaves them out.
+
+Scope decision (SPEC B1, amended in T13): scope rows are written with complete=0. A snapshot lists
+the records it was asked for, not the whole store (some snapshots, empty ones included, omit
+records another capture saw present minutes earlier), so a bundle omission never proves absence.
 """
 import json
 
@@ -160,8 +164,8 @@ def _history(insert, where, store_name, at, source, exported, row):
 
 
 def _scopes(conn, file_id, valid):
-    """One complete scope row per store and time, but only where the capture covers every
-    collection that store carries in this file (the scope has no collection column)."""
+    """One scope row (complete=0, SPEC B1) per store and time, but only where the capture covers
+    every collection that store carries in this file (the scope has no collection column)."""
     wanted, seen, first = {}, {}, {}
     for _, snap in valid:
         wanted.setdefault(snap["data_store"], set()).add(snap["collection"])
@@ -170,5 +174,5 @@ def _scopes(conn, file_id, valid):
         first.setdefault(key, snap["captured_at"])
     for (system, _), got in sorted(seen.items(), key=lambda kv: (kv[0][0], kv[0][1])):
         if got == wanted[system]:
-            conn.execute("insert into capture_scope values (?,?,?,1)",
+            conn.execute("insert into capture_scope values (?,?,?,0)",
                          (file_id, system, first[(system, _)]))

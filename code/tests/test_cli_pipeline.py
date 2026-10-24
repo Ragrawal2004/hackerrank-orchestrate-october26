@@ -116,7 +116,8 @@ class PipelineCliTests(unittest.TestCase):
         self.assertRegex(self.proc.stdout, r"retained_missing: \d+ cases / \d+ records")
 
     def test_prints_the_adapter_summary_with_zero_unparsed(self):
-        self.assertIn("adapters: files=46 ", self.proc.stdout)
+        self.assertIn("adapters: files=58 ", self.proc.stdout)
+        self.assertIn(" unclaimed_files=36", self.proc.stdout)
         self.assertIn(" unparsed=0 ", self.proc.stdout)
         self.assertIn(" clock_choice_matters=0 ", self.proc.stdout)
         self.assertNotIn("WARNING", self.proc.stdout)

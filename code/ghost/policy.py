@@ -48,6 +48,7 @@ COLLECTION_CATEGORY = {
     "security_audit_records": "SECURITY_AUDIT_LOG",
     "retained_order_records": "LEGAL_HOLD_RECORD",
     "deleted_customer_references": "ACCOUNT_TOMBSTONE",
+    "contact_lookups": "SECONDARY_IDENTIFIER",  # open assumption O-4 (one line, sample 12)
 }
 # Only systems that hold a single category; support, analytics and object storage are mixed.
 SYSTEM_CATEGORY = {
