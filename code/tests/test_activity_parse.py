@@ -30,6 +30,12 @@ class ParseDetailsTests(unittest.TestCase):
         self.assertEqual(p["kind"], "repopulate")
         self.assertEqual(p["downstream_resource"], "search_4882")
 
+    def test_final_checkpoint(self):
+        p = parse_details("SYNC_RECORD", "account_1334",
+                          "Replication worker reported its final checkpoint for account_1334.")
+        self.assertEqual(p["kind"], "final_checkpoint")
+        self.assertEqual(p["target_resource"], "account_1334")
+
     def test_link_identity(self):
         p = parse_details("LINK_RESOURCE_IDENTITY", "account_5762",
                           "Data catalog linked account_5762 (account_5762) to haruka.s1838@zoho.com and user_11.")
@@ -87,8 +93,13 @@ class ParseRealDatasetTests(unittest.TestCase):
 
     def test_observed_phrase_counts(self):
         self.assertEqual(len(self.kinds("primary_profile")), 532)
-        self.assertEqual(len(self.kinds("target_resource")), 12)
+        self.assertEqual(len(self.kinds("target_resource")), 11)
         self.assertEqual(len(self.kinds("repopulate")), 32)
+        checkpoints = self.kinds("final_checkpoint")
+        self.assertEqual(len(checkpoints), 56)
+        for r, p in checkpoints:
+            self.assertEqual(r["event_type"], "SYNC_RECORD")
+            self.assertEqual(p["target_resource"], r["resource_id"])
 
     def test_every_link_event_type_parsed(self):
         for r, p in self.parsed:

@@ -1,6 +1,9 @@
 """In-memory SQLite fact store (DESIGN §1). Built once per run, no per-case state."""
 import sqlite3
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+
+_EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
 
 SCHEMA = """
 create table identity (
@@ -41,8 +44,25 @@ create table extraction (
 """
 
 
+def epoch_us(value):
+    """ISO-8601 timestamp -> integer microseconds since the epoch (UTC). None stays None."""
+    if value is None:
+        return None
+    dt = datetime.fromisoformat(value.strip().replace("Z", "+00:00"))
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return (dt - _EPOCH) // timedelta(microseconds=1)
+
+
+def register_functions(conn):
+    """ts(x) compares timestamps as instants in SQL, whatever their ISO spelling."""
+    conn.create_function("ts", 1, epoch_us, deterministic=True)
+
+
 def connect():
-    return sqlite3.connect(":memory:")
+    conn = sqlite3.connect(":memory:")
+    register_functions(conn)
+    return conn
 
 
 def create_schema(conn):

@@ -7,6 +7,8 @@ import re
 _PRIMARY = re.compile(r"submitted primary profile (\S+?) to \S+?\.?$")
 _TARGET = re.compile(r"Target resource: (\S+?)\.?$")
 _REPOP = re.compile(r"repopulated downstream resource (\S+?)\.?$")
+# "...final checkpoint for X." and (case_05) "...final checkpoint. Target resource: X."
+_CHECKPOINT = re.compile(r"reported its final checkpoint(?: for (\S+?)\.?$|\. Target resource: (\S+?)\.?$)")
 # "linked X (X) to <email> and <user>" and "confirmed X (file.pdf) belongs only to <email> and <user>;"
 _LINK = re.compile(
     r"(?:linked|confirmed) (\S+) \([^)]*\) (?:belongs only to|to) (\S+@\S+?) and (user_\d+)[.;]")
@@ -35,6 +37,8 @@ def parse_details(event_type, resource_id, details):
         m = _REPOP.search(text)
         if m:
             out.update(kind="repopulate", downstream_resource=m.group(1))
+        elif (m := _CHECKPOINT.search(text)):
+            out.update(kind="final_checkpoint", target_resource=m.group(1) or m.group(2))
         elif (m := _PRIMARY.search(text)):
             out.update(kind="primary_profile", target_resource=m.group(1))
         elif (m := _TARGET.search(text)):
