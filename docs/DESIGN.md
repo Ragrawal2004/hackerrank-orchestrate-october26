@@ -274,7 +274,7 @@ code/evaluation/main.py, usage_report.py, custom_cases.md, family_checks.md, eva
 | T12 | Adapter 4: inventory SQL + scope | Sample 09 matches |
 | T13 | Adapter 5: log tokenizer + observability (6 syntaxes) | Samples 12, 15, 17, 19 match; 0 unparsed meaningful lines across all logs |
 | T14 | Adapter 6: read-back trace logs | Samples 03, 18, 20 match except U1/U2 steps |
-| T15 | Adapter 7: ledgers (JSON / log / text) | Samples 11, 13, 14 match |
+| T15 | Adapter 7: ledgers (JSON / log / text) | Samples 11, 13, 14 match except L1 steps (done, see SPEC LG1) |
 | T16 | L1 account linker + MA analytics linker (unique only) + `LINK_FALLBACK` + diagnostics file | Reproduces the LINKING_EXPERIMENT numbers (M6 151/152; MA 44/45 held-out); MA ties emit no step |
 | T17 | Adapter 8: PDF + screenshot extraction (prompt in `code/prompts/screenshot.md`) | Samples 06–08 match; F-J cases produce steps |
 | T18 | Custom cases CC1–CC5 + overlay runner | All 5 pass |

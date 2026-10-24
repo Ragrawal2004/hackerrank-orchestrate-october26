@@ -33,7 +33,7 @@ class InvariantsCliTests(unittest.TestCase):
             self.assertEqual(strict.returncode, 1, strict.stdout)
             self.assertIn("FAIL P1", strict.stdout)
             self.assertIn("FAIL P3", strict.stdout)
-            self.assertIn("case_36", strict.stdout)  # first case still left without steps
+            self.assertIn("case_39", strict.stdout)  # first case still left without steps
             relaxed = run_eval("--invariants", "--allow-stub", "--pred", str(out))
             self.assertEqual(relaxed.returncode, 0, relaxed.stdout)
             self.assertIn("RESULT: PASS", relaxed.stdout)

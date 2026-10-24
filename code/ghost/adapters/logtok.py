@@ -115,6 +115,22 @@ def parse_line(syntax, text):
     return _line(g[0], g[2], g[3], _trace(g[1], kv), kv.get("event"), kv)
 
 
+_LEVELED = re.compile(rf"^{_TS} (\w+) (service=.*)$")
+
+
+def parse_leveled_line(text):
+    """Line for a ledger-style line `TS LEVEL service=S event=E k=v ...` (the level is a bare
+    word, not `level=`, so it is none of the six syntaxes above and `parses` never returns it),
+    else None. The trace id is always None."""
+    m = _LEVELED.match(text or "")
+    if not m:
+        return None
+    kv = _kv(m.group(3))
+    if kv is None:
+        return None
+    return _line(m.group(1), m.group(2), kv.get("service"), None, kv.get("event"), kv)
+
+
 def parses(text):
     """The syntaxes under which one line parses."""
     return [s for s in SYNTAXES if parse_line(s, text) is not None]
