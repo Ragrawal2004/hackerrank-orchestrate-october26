@@ -849,3 +849,57 @@ branch=feature/agent
 repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
 worktree=main
 parent_agent=none
+
+## [2026-10-24T18:46:57Z] SESSION START
+
+tool=Claude Code
+model=claude-sonnet-5-5
+Repo Root: /Users/rounakagrawal/hackerrank-orchestrate-october26
+Branch: feature/agent
+Worktree: main
+Parent Agent: none
+Language: py
+Time Remaining: not configured
+
+## [2026-10-24T18:46:57Z] T9 plan approved; red tests for replica SQL adapter
+
+User Prompt (verbatim, secrets redacted):
+Plan T9 only: adapter 1, the replica-drift SQL reader (read AGENTS.md, CLAUDE.md, docs, T2/T7/T8 code; detect by structure; observations, subject keys, capture scope; count unparsed lines, target zero; samples 05/16/22 match gold, 01/02/04 by omission; report PARTIAL checkpoints for U7; tests first, mutation checks on a throwaway copy; no LLM; do not read .env; no commit until OK). Follow-up: plan approved, add SPEC named decision for record_at = capture time, a clock_choice_matters diagnostics event with count in the adapter summary (expected 0) and a boundary test; show the red test output before implementing.
+
+Agent Response Summary:
+Profiled the 12 replica SQL files read-only (two shapes: record-json store and typed profiles; ghosts are replica-only account_service rows), wrote the plan, and after approval wrote code/tests/test_adapter_replica_sql.py (52 tests) plus tests/sql_fixture.py. Created empty stub modules ghost/adapters/__init__.py and replica_sql.py so every test fails individually; red run is 52 errors, all AttributeError. Implementation has not started.
+
+Actions:
+* read docs/SPEC.md, DESIGN.md, FAMILY_DISCOVERY.md, SAMPLE_DERIVATION.md (part), ghost/*.py, tests helpers
+* read-only profiling scripts in the session scratchpad over dataset/evidence/databases
+* wrote code/tests/sql_fixture.py, code/tests/test_adapter_replica_sql.py
+* created empty code/ghost/adapters/__init__.py, code/ghost/adapters/replica_sql.py
+* ran python3 -m unittest tests.test_adapter_replica_sql (52 errors, expected red)
+
+Context:
+tool=Claude Code
+model=claude-sonnet-5-5
+branch=feature/agent
+repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
+worktree=main
+parent_agent=none
+
+## [2026-10-24T19:18:32Z] T9 implemented, verified, mutation-checked (uncommitted)
+
+User Prompt (verbatim, secrets redacted):
+Go. Implement replica_sql.py, the parse_report table, the loader and CLI wiring, and the SPEC clock-decision note. Keep the unparsed target at zero and flag any non-zero count loudly. After the tests are green, show me: the full suite result; the adapter summary line; the sample score for cases 05, 16 and 22 (strict and relaxed, plus the mismatch list); the clock_choice_matters count on the real data; the U7 report for the 25 PARTIAL checkpoints; git status --short. Then run the mutation checks on a throwaway copy with a passing baseline and show the table. No commit yet
+
+Agent Response Summary:
+Implemented the replica SQL adapter, parse_report, loader/CLI wiring and SPEC decision C1; 628 tests pass, unparsed=0, clock_choice_matters=0. Samples 05 and 16 match gold; 22 lacks only the T16 account step. Mutation run on a throwaway copy: baseline green, all non-equivalent mutants killed after strengthening the hostile-SQL test. Nothing committed.
+
+Actions:
+* wrote code/ghost/adapters/*, edited store.py, loaders.py, cli.py, docs/SPEC.md, four older tests
+* ran full suite, sample scoring, U7 and omission checks, mutation runs (scratchpad scripts)
+
+Context:
+tool=Claude Code
+model=claude-sonnet-5-5
+branch=feature/agent
+repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
+worktree=main
+parent_agent=none

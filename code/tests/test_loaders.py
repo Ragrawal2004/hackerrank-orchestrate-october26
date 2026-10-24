@@ -92,9 +92,14 @@ class StoreTests(unittest.TestCase):
         self.assertEqual(count(self.conn, "select count(*) from evidence_file"), 94)
         self.assertEqual(count(self.conn, "select count(*) from identity where kind='user_id'"), 850)
 
-    def test_later_tables_empty(self):
-        for t in ("observation", "subject_key", "join_key", "capture_scope", "extraction"):
+    def test_tables_no_adapter_writes_yet_are_empty(self):
+        # replica_sql fills observation/subject_key/capture_scope/parse_report; it emits no join keys
+        for t in ("join_key", "extraction"):
             self.assertEqual(count(self.conn, f"select count(*) from {t}"), 0, t)
+
+    def test_replica_files_are_claimed_and_clean(self):
+        self.assertEqual(count(self.conn, "select count(*) from evidence_file where adapter='replica_sql'"), 12)
+        self.assertEqual(count(self.conn, "select coalesce(sum(unparsed),0) from parse_report"), 0)
 
     def test_evidence_manifest_row(self):
         row = self.conn.execute(

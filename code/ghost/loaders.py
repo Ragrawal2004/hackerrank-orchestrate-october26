@@ -3,7 +3,7 @@ import csv
 import hashlib
 from pathlib import Path
 
-from . import store
+from . import adapters, store
 from .activity_parse import parse_details
 
 
@@ -112,5 +112,6 @@ def load_store(dataset_dir):
         "target_system, resource_id, reported_result, details, kind, target_resource, "
         "downstream_resource, linked_identifier, linked_user_id) "
         "values (?,?,?,?,?,?,?,?,?,?,?,?,?)", act)
+    adapters.load_evidence(conn, dataset_dir)
     conn.commit()
     return conn

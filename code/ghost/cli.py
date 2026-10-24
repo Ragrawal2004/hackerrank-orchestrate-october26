@@ -5,8 +5,9 @@ from pathlib import Path
 
 from collections import Counter
 
-from . import (config, diagnostics, dossier, envfile, identity, intent, llm, loaders, policy,
+from . import (adapters, config, diagnostics, dossier, envfile, identity, intent, llm, loaders, policy,
                steps)
+from .adapters import replica_sql
 
 HEADER = ["case_id", "deletion_status", "steps_json"]
 
@@ -48,6 +49,8 @@ def audit_case(conn, rules, case, runs_dir):
         diagnostics.log_event(runs_dir, cid, "no_steps", reason="no_identity")
         return "INCOMPLETE", steps.serialize_steps([]), [], True
     plan = policy.evaluate(d, rules)
+    clock_events = replica_sql.clock_choice_events(conn, case)
+    _log_events(runs_dir, cid, clock_events)
     _log_events(runs_dir, cid, d["events"])
     _log_events(runs_dir, cid, plan["events"])
     diagnostics.log_event(
@@ -110,6 +113,10 @@ def main(argv=None):
         rows.append([cid, status, steps_json])
     write_output(out, rows)
     print(intent.format_report(intent.report(results)))
+    summ = adapters.summary(conn)
+    unclaimed = conn.execute("select count(*) from evidence_file where format is null").fetchone()[0]
+    clock = replica_sql.count_clock_choice(conn, [c for c in requests if c["case_id"] not in non_deletion])
+    print(adapters.format_summary(summ, clock, unclaimed))
     print(format_policy_summary(statuses, no_steps, retained_missing))
     print(f"wrote {len(requests)} rows to {out}")
     return 0

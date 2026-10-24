@@ -78,20 +78,24 @@ class PipelineCliTests(unittest.TestCase):
         nums = [int(i.split("_")[1]) for i in ids]
         self.assertEqual(nums, sorted(nums))
 
-    def test_without_adapters_only_the_ten_non_deletions_are_not_applicable(self):
-        # No adapter has filled the fact store yet, so no deletion case has steps.
+    def test_only_the_ten_non_deletions_are_not_applicable(self):
         na = [r[0] for r in self.rows[1:] if r[1] == "NOT_APPLICABLE"]
         self.assertEqual(na, [f"case_{n}" for n in range(533, 543)])
         for r in self.rows[1:]:
-            self.assertEqual(r[2], "[]")
-            self.assertEqual(r[1], "NOT_APPLICABLE" if r[0] in na else "INCOMPLETE")
+            if r[0] in na:
+                self.assertEqual(r[2], "[]")
+            else:
+                self.assertIn(r[1], ("COMPLETE", "INCOMPLETE"))
 
-    def test_every_deletion_case_logs_no_steps_and_a_dossier(self):
+    def test_every_deletion_case_logs_a_dossier_and_empty_rows_are_excused(self):
+        # Adapters land one task at a time; a deletion case with no evidence yet is INCOMPLETE []
+        # and must log no_steps.
         deletion = {r[0] for r in self.rows[1:] if r[1] != "NOT_APPLICABLE"}
+        empty = {r[0] for r in self.rows[1:] if r[1] == "INCOMPLETE" and r[2] == "[]"}
         no_steps = {e["case_id"] for e in self.events if e["event"] == "no_steps"}
         dossiers = {e["case_id"] for e in self.events if e["event"] == "dossier"}
         self.assertEqual(len(deletion), 508)
-        self.assertEqual(no_steps, deletion)
+        self.assertEqual(no_steps, empty)
         self.assertEqual(dossiers, deletion)
 
     def test_invariants_pass_without_allow_stub(self):
@@ -99,16 +103,23 @@ class PipelineCliTests(unittest.TestCase):
                                     self.runs / "diagnostics.jsonl")
         self.assertEqual(res.violations, [], res.violations[:5])
         self.assertEqual(res.skipped, {})
-        self.assertEqual(res.stats["no_steps_excused"], 508)
+        no_steps = {e["case_id"] for e in self.events if e["event"] == "no_steps"}
+        self.assertEqual(res.stats["no_steps_excused"], len(no_steps))
 
     def test_prints_the_intent_report(self):
         self.assertIn("Agreement (LLM vs prefilter)", self.proc.stdout)
         self.assertIn("NON_DELETION by source", self.proc.stdout)
 
     def test_prints_the_policy_summary(self):
-        self.assertIn("Status: COMPLETE=0 INCOMPLETE=508 NOT_APPLICABLE=10", self.proc.stdout)
-        self.assertIn("no_steps: 508 cases", self.proc.stdout)
-        self.assertIn("retained_missing: 0 cases / 0 records", self.proc.stdout)
+        self.assertRegex(self.proc.stdout, r"Status: COMPLETE=\d+ INCOMPLETE=\d+ NOT_APPLICABLE=10")
+        self.assertRegex(self.proc.stdout, r"no_steps: \d+ cases")
+        self.assertRegex(self.proc.stdout, r"retained_missing: \d+ cases / \d+ records")
+
+    def test_prints_the_adapter_summary_with_zero_unparsed(self):
+        self.assertIn("adapters: files=12 ", self.proc.stdout)
+        self.assertIn(" unparsed=0 ", self.proc.stdout)
+        self.assertIn(" clock_choice_matters=0 ", self.proc.stdout)
+        self.assertNotIn("WARNING", self.proc.stdout)
 
     def test_dataset_untouched(self):
         self.assertEqual(tree_fingerprint(DATASET), self.before)

@@ -38,6 +38,10 @@ create index activity_time on activity(event_time);
 create table rule (
     rule_id text, category text not null, condition text, action text not null
 );
+create table parse_report (
+    file_id text primary key, adapter text not null, meaningful integer not null,
+    parsed integer not null, unparsed integer not null, notes_json text
+);
 create table extraction (
     file_id text, method text, model text, payload_json text
 );
