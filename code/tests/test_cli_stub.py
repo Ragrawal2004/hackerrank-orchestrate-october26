@@ -9,12 +9,16 @@ from pathlib import Path
 from tests.helpers import DATASET, MAIN, tree_fingerprint
 
 
+# A path that does not exist, so the CLI never reads a real .env during tests.
+NO_ENV_FILE = str(Path(tempfile.gettempdir()) / "ghost-tests-no-such-env-file")
+
+
 def run_cli(*args):
     return subprocess.run(
         [sys.executable, str(MAIN), *args],
         capture_output=True,
         text=True,
-        env={"PATH": "/usr/bin:/bin"},
+        env={"PATH": "/usr/bin:/bin", "GHOST_ENV_FILE": NO_ENV_FILE},
     )
 
 

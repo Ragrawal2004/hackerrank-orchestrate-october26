@@ -3,7 +3,7 @@ import csv
 import sys
 from pathlib import Path
 
-from . import config, loaders
+from . import config, envfile, llm, loaders
 
 HEADER = ["case_id", "deletion_status", "steps_json"]
 
@@ -31,11 +31,13 @@ def write_output(path, rows):
 
 def main(argv=None):
     args = build_parser().parse_args(argv)
+    envfile.load_dotenv(envfile.env_file_path(config.find_repo_root()))  # before build_config reads the env
     try:
         cfg = config.build_config(args.link_fallback, args.category_llm, args.no_llm, args.cold)
     except ValueError as e:
         print(f"error: {e}", file=sys.stderr)
         return 2
+    llm.configure(runs_dir=cfg.runs_dir, cold=cfg.cold)
     dataset = args.dataset or cfg.dataset_dir
     out = args.out or cfg.default_output
     requests = loaders.load_requests(dataset)

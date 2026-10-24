@@ -253,3 +253,67 @@ branch=feature/agent
 repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
 worktree=main
 parent_agent=none
+
+## [2026-10-24T14:25:54Z] Step 0 committed; T3 llm wrapper implemented (uncommitted)
+
+User Prompt (verbatim, secrets redacted):
+(same turn as the previous entry; plan approved, implementation phase)
+
+Agent Response Summary:
+Step 0 committed (0f5b3ea, 63 tests green). T3 tests written first (5 test modules failing on import), then implemented ghost/llm.py, schema.py, envfile.py, evaluation/usage_report.py, scripts/smoke_llm.py, config PRICES TODO table, CLI wiring and requirements.txt (anthropic==2.3.0). Suite is 144 green. Seven mutations (drop cache, three token miscounts, skip schema validation, two key-logging variants) were all caught. Nothing from T3 is committed; stopping for review.
+
+Actions:
+* git commit 0f5b3ea (store.py, loaders.py, test_loaders.py, DESIGN.md, log.txt)
+* Created code/ghost/{llm,schema,envfile}.py, code/evaluation/{__init__,usage_report}.py, code/scripts/smoke_llm.py, requirements.txt, five test modules
+* Edited code/ghost/{config,cli}.py, code/tests/__init__.py
+* Ran unittest and a mutation script in the scratchpad (copy of code/, working tree untouched)
+* No real API call made; .env not read
+
+Context:
+tool=Claude Code
+model=claude-sonnet-5-5
+branch=feature/agent
+repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
+worktree=main
+parent_agent=none
+
+## [2026-10-24T14:26:12Z] Decisions on T3 plan acknowledged
+
+User Prompt (verbatim, secrets redacted):
+Decisions on the T3 plan: (1) Keep error and run_id in usage.jsonl. (2) --cold still writes the cache but never reads it. (3) Yes, sync DESIGN §6 to the real interface (prompt and schema args, runs/cache/, purposes intent, category, screenshot, pdf), but as a separate docs-only commit after T3 is approved, not inside Step 0. (4) If a model rejects temperature=0, stop and tell me; do not drop it silently. (5) The usage report must count a cache hit as zero calls and zero cost, and must show total calls separately from total cache hits. Proceed with Step 0.
+
+Agent Response Summary:
+Step 0 was already committed (0f5b3ea) in the previous turn, so there was nothing left to do for it. Decisions 1, 2, 4 and 5 already match the uncommitted T3 code; decision 3 (DESIGN §6 sync) waits until T3 is approved. No files other than log.txt changed.
+
+Actions:
+* Appended this log entry
+
+Context:
+tool=Claude Code
+model=claude-sonnet-5-5
+branch=feature/agent
+repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
+worktree=main
+parent_agent=none
+
+## [2026-10-24T14:31:58Z] Drop temperature; GHOST_ENV_FILE; mutation checks
+
+User Prompt (verbatim, secrets redacted):
+The smoke test shows anthropic 2.3.0's Messages.create() has no temperature parameter. Decision: do not send temperature, and do not pass it through extra_body. Make these changes, test-first. (1) Remove temperature from the transport call, from the cache-key params, and from the docstrings. Update the test that asserted temperature 0 so it asserts that no temperature is passed. (2) Make sure max_tokens is always set, since the API requires it. (3) Also do the earlier request: add an env var GHOST_ENV_FILE (default .env) used as the dotenv path, make the subprocess CLI tests point it at a non-existent temp file, and add a test that the CLI ignores a real .env when GHOST_ENV_FILE points elsewhere (fake temp files only). (4) Add one mutation check for each change: re-add temperature to the call and confirm the suite goes red, and make the CLI read .env regardless of GHOST_ENV_FILE and confirm red. Run mutations on a throwaway copy. Show the suite green, git status --short, and git diff --stat. No commit yet.
+
+Agent Response Summary:
+Tests were changed first and went red, then temperature was removed from llm.py (transport signature, SDK call, cache params, docstrings) and max_tokens validation added. Added envfile.env_file_path (GHOST_ENV_FILE), used by the CLI and smoke script; subprocess CLI tests point it at a non-existent temp file. Suite is 152 green; five mutations were all caught. Nothing committed.
+
+Actions:
+* Edited code/ghost/{llm,config,envfile,cli}.py, code/scripts/smoke_llm.py, code/tests/{test_llm,test_cli_stub}.py
+* Added code/tests/test_cli_env.py
+* Ran unittest and a mutation script on a scratchpad copy
+* No real API call; .env not read
+
+Context:
+tool=Claude Code
+model=claude-sonnet-5-5
+branch=feature/agent
+repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
+worktree=main
+parent_agent=none

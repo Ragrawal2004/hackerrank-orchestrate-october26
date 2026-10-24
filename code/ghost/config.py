@@ -1,7 +1,7 @@
 """Run configuration: paths, env flags, model names.
 
-Reads os.environ only. There is deliberately no .env loader; export variables
-in the shell instead.
+Reads os.environ only. A .env file is loaded into os.environ at startup by
+ghost.envfile (see cli.main), never here, and the API key is never stored on Config.
 """
 import os
 from dataclasses import dataclass, field
@@ -13,6 +13,22 @@ CATEGORY_LLM_VALUES = ("on", "off")
 DEFAULT_INTENT_MODEL = "claude-haiku-5-5"
 DEFAULT_CATEGORY_MODEL = "claude-haiku-5-5"
 DEFAULT_SCREENSHOT_MODEL = "claude-sonnet-5-5"
+
+# LLM call settings (ghost.llm). max_tokens is always sent; the API requires it.
+LLM_MAX_TOKENS = 1024
+LLM_MAX_ATTEMPTS = 3
+LLM_BACKOFF_SECONDS = 1.0
+LLM_TIMEOUT_SECONDS = 60.0
+
+# TODO(user): fill in from the provider's published pricing. Do NOT guess numbers.
+# Prices are USD per million tokens. Record where they came from (source_url) and the
+# date you read them (as_of, YYYY-MM-DD). evaluation/usage_report.py fails loudly while
+# any value is None for a model that appears in runs/usage.jsonl.
+_UNPRICED = {"input_per_mtok": None, "output_per_mtok": None, "source_url": None, "as_of": None}
+PRICES = {
+    DEFAULT_INTENT_MODEL: dict(_UNPRICED),
+    DEFAULT_SCREENSHOT_MODEL: dict(_UNPRICED),
+}
 
 
 def find_repo_root(start=None):
