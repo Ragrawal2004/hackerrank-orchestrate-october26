@@ -36,6 +36,7 @@ COLLECTION_CATEGORY = {
     "customer_analytics_reports": "ANALYTICS_PROFILE",
     "customer_analytics_profiles": "ANALYTICS_PROFILE",
     "support_conversations": "SUPPORT_MESSAGE",
+    "support_records": "SUPPORT_MESSAGE",
     "ticket_attachments": "SUPPORT_ATTACHMENT",
     "customer_export_jobs": "USER_EXPORT",
     "customer_exports": "USER_EXPORT",

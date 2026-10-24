@@ -1027,3 +1027,95 @@ branch=feature/agent
 repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
 worktree=main
 parent_agent=none
+
+## [2026-10-24T20:44:19Z] SESSION START
+
+tool=Claude Code
+model=claude-sonnet-5-5
+Repo Root: /Users/rounakagrawal/hackerrank-orchestrate-october26
+Branch: feature/agent
+Worktree: main
+Parent Agent: none
+Language: py
+Time Remaining: not configured
+
+## [2026-10-24T20:44:19Z] Greeting
+
+User Prompt (verbatim, secrets redacted):
+heello
+
+Agent Response Summary:
+Greeted the user with the standard Orchestrate welcome and asked what to work on next. No code changes.
+
+Actions:
+* Appended SESSION START and this turn entry to log.txt
+
+Context:
+tool=Claude Code
+model=claude-sonnet-5-5
+branch=feature/agent
+repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
+worktree=main
+parent_agent=none
+
+## [2026-10-24T20:45:18Z] SESSION START
+
+tool=Claude Code
+model=claude-sonnet-5-5
+Repo Root: /Users/rounakagrawal/hackerrank-orchestrate-october26
+Branch: feature/agent
+Worktree: main
+Parent Agent: none
+Language: py
+Time Remaining: not configured
+
+## [2026-10-24T20:45:18Z] List available skills
+
+User Prompt (verbatim, secrets redacted):
+what are skiils u have
+
+Agent Response Summary:
+Listed the skills available in this Claude Code session, grouped by category. No code or dataset changes were made.
+
+Actions:
+* Appended SESSION START and per-turn entries to log.txt
+
+Context:
+tool=Claude Code
+model=claude-sonnet-5-5
+branch=feature/agent
+repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
+worktree=main
+parent_agent=none
+
+## [2026-10-25T02:30:00Z] SESSION START
+
+tool=Claude Code
+model=claude-sonnet-5-5
+Repo Root: /Users/rounakagrawal/hackerrank-orchestrate-october26
+Branch: feature/agent
+Worktree: main
+Parent Agent: none
+Language: py
+Time Remaining: not configured
+
+## [2026-10-25T02:30:01Z] T12 plan, evidence for complete=0, implemented and mutation-checked (uncommitted)
+
+User Prompt (verbatim, secrets redacted):
+Plan T12 only: the inventory SQL reader and capture scope [..] No commit until I say OK. Show the plan and wait. (then: approved with 3 conditions on complete=1 evidence, support_records, 32-sample before/after; then choice "complete=0 now, citation-only later")
+
+Agent Response Summary:
+Showed the plan, then found that case_05's gold contradicts treating inventory scope as complete, so inventory scope rows are written with complete=0 (SPEC I1). Implemented ghost/adapters/inventory_sql.py test-first (70 tests, 57 red against a stub), extended the shared SQL loader for CREATE INDEX, added the U4 Rule O ordering and support_records mapping (SPEC I2 open assumption). Full suite 798 OK, adapters line files=46 unparsed=0, only sample case_09 changed, mutation check killed 28 of 28 after adding 3 tests.
+
+Actions:
+* Added code/ghost/adapters/inventory_sql.py, code/tests/inventory_fixture.py, code/tests/test_adapter_inventory_sql.py
+* Edited adapters/__init__.py, adapters/replica_sql.py, dossier.py, policy.py, tests/test_cli_pipeline.py (files=46), docs/SPEC.md (I1, I2), docs/DESIGN.md
+* Ran CLI before/after with --no-llm and a missing GHOST_ENV_FILE, sample scorer, invariants, determinism cmp, mutation script on a throwaway copy
+
+Context:
+tool=Claude Code
+model=claude-sonnet-5-5
+branch=feature/agent
+repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
+worktree=main
+parent_agent=none

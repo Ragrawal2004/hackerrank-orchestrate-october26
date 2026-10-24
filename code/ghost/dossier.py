@@ -21,6 +21,7 @@ from . import identity, store
 # No sample has one; confirm against the replica SQL once T9 parses it.
 RECREATION_RESULTS = frozenset({"SUCCESS", "PARTIAL"})
 RECREATION_KINDS = frozenset({"final_checkpoint", "repopulate"})
+EXTRACT_ADAPTERS = frozenset({"inventory_sql"})  # filtered extracts: Rule O prefers a dump (U4)
 TRACE_KEYS = frozenset({"trace_id", "request_id"})
 REFERENCE_KEYS = frozenset({"source_resource_id", "customer_reference"})
 LINK_KINDS = ("user_id", "email", "email_hash", "phone")
@@ -76,8 +77,8 @@ def _query_join_keys(conn, audit_at):
 
 
 def _query_scopes(conn, audit_at):
-    cols = ("file_id", "system_id", "record_at", "complete", "manifest_at")
-    sql = ("select s.file_id, s.system_id, s.record_at, s.complete, f.manifest_at "
+    cols = ("file_id", "system_id", "record_at", "complete", "manifest_at", "adapter")
+    sql = ("select s.file_id, s.system_id, s.record_at, s.complete, f.manifest_at, f.adapter "
            "from capture_scope s left join evidence_file f on f.file_id = s.file_id "
            "where ts(s.record_at) <= ts(?) order by s.file_id, s.system_id, s.record_at")
     return [dict(zip(cols, r)) for r in conn.execute(sql, (audit_at,))]
@@ -365,9 +366,12 @@ def _resolve(rid, sys, link, obs, oids, scopes, acts, limit, events):
             per_file[o["file_id"]] = {"file_id": o["file_id"], "manifest_at": o["manifest_at"],
                                       "state": o["state"]}
     rule_e = sorted(per_file.values(), key=lambda x: (-_t(x["manifest_at"]), x["file_id"]))
-    rule_o = sorted({s["file_id"]: {"file_id": s["file_id"], "manifest_at": s["manifest_at"]}
+    # U4: a table dump is cited before an inventory (a filtered extract), then latest first.
+    rule_o = sorted({s["file_id"]: {"file_id": s["file_id"], "manifest_at": s["manifest_at"],
+                                    "adapter": s.get("adapter")}
                      for s in omissions if _citable(s["manifest_at"], limit)}.values(),
-                    key=lambda x: (-_t(x["manifest_at"]), x["file_id"]))
+                    key=lambda x: (x["adapter"] in EXTRACT_ADAPTERS, -_t(x["manifest_at"]),
+                                   x["file_id"]))
 
     rule = pick = None
     if recreated:

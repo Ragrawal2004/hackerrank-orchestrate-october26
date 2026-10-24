@@ -60,14 +60,17 @@ def _kind(stmt):
     first = words[0].upper().rstrip(";") if words else ""
     if first == "CREATE" and len(words) > 1 and words[1].upper() == "TABLE":
         return "CREATE"
+    if first == "CREATE" and len(words) > 1 and words[1].upper() == "INDEX":
+        return "INDEX"
     return first if first in ("INSERT", *IGNORED) else "OTHER"
 
 
 def load_sql(text):
-    """Execute only CREATE TABLE / INSERT statements in a scratch database.
+    """Execute only CREATE TABLE / CREATE INDEX / INSERT statements in a scratch database.
 
     Returns (db, stats). Anything else (UPDATE, DROP, ATTACH, SELECT...) is never executed and is
-    counted as an unparsed meaningful statement, as is a statement that fails to execute.
+    counted as an unparsed meaningful statement, as is a statement that fails to execute. A
+    CREATE INDEX is executed but carries no facts, so it is not meaningful unless it fails.
     """
     db = sqlite3.connect(":memory:")
     stats = {"meaningful": 0, "failed": 0, "notes": []}
@@ -76,8 +79,9 @@ def load_sql(text):
         kind = _kind(stmt) if complete else "PARTIAL"
         if kind in IGNORED:
             continue
-        stats["meaningful"] += 1
-        if kind not in ("CREATE", "INSERT"):
+        if kind != "INDEX":
+            stats["meaningful"] += 1
+        if kind not in ("CREATE", "INSERT", "INDEX"):
             stats["failed"] += 1
             stats["notes"].append({"type": "unexecuted_statement", "kind": kind,
                                    "head": stmt.strip()[:60]})
@@ -85,6 +89,8 @@ def load_sql(text):
         try:
             db.execute(stmt)
         except sqlite3.Error as e:
+            if kind == "INDEX":
+                stats["meaningful"] += 1
             stats["failed"] += 1
             stats["notes"].append({"type": "statement_error", "kind": kind, "error": str(e)[:80],
                                    "head": stmt.strip()[:60]})
