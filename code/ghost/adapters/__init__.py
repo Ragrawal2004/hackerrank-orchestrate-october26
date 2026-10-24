@@ -3,9 +3,9 @@ the fact store. `load_evidence` offers every manifest file to the registry; a fi
 claims keeps format NULL and is reported as unclaimed (later tasks add the other adapters)."""
 from pathlib import Path
 
-from . import replica_sql, snapshot_bundle
+from . import replica_sql, service_export, snapshot_bundle
 
-ADAPTERS = [replica_sql, snapshot_bundle]
+ADAPTERS = [replica_sql, snapshot_bundle, service_export]
 
 
 class AmbiguousAdapter(ValueError):

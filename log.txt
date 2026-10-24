@@ -974,3 +974,56 @@ branch=feature/agent
 repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
 worktree=main
 parent_agent=none
+
+## [2026-10-25T00:00:00Z] SESSION START
+
+tool=Claude Code
+model=claude-sonnet-5-5
+Repo Root: /Users/rounakagrawal/hackerrank-orchestrate-october26
+Branch: feature/agent
+Worktree: main
+Parent Agent: none
+Language: py
+Time Remaining: not configured
+
+## [2026-10-25T00:00:01Z] T11 plan: service read-back export adapter (approved with conditions)
+
+User Prompt (verbatim, secrets redacted):
+/rename t11-service-export, then: "Read AGENTS.md, CLAUDE.md, docs/SPEC.md, docs/DESIGN.md (§3 adapters, adapter 3, §11 T11), docs/FAMILY_DISCOVERY.md, and the T9 and T10 adapters and their tests as the pattern, including adapters/common.py. Plan T11 only: adapter 3, the service read-back export reader. [...rest of the pasted brief: detect export files by structure, same fact-store fields as T9/T10, unparsed accounting to zero, samples 23-30 match gold except L1 steps (T16), sample 21 explained, status mix and adapter line before/after, test-first with synthetic fixtures, mutation checks on a throwaway copy with AGENTS.md and a passing baseline, no LLM, do not read .env, no commit until OK, show the plan and wait.]" Then, on the plan: "Approved with 3 conditions. (1) Search query keys: classify by shape; email or phone use that key kind, plain text becomes a name-type key that never links alone; test each. (2) Before the commit, show cases 23, 24, 29, 30 with audit_record_4128, 7095, 3954, 1707 and the evidence each cites; if one is missing it is a T10 bug, stop and tell me. (3) Update SPEC and DESIGN §3 for the deviation (only explicit 404 and 0-hit rows count as absence) in the same change. Add session start and per-turn entries to log.txt. Show the red tests first. No commit until I say OK."
+
+Agent Response Summary:
+Read the design docs and the T9/T10 adapters, surveyed the 11 service export files and the gold of samples 21 and 23-30 read-only, and wrote the plan (structure detection, record_at = observed_at, no scope rows, strict unparsed accounting). The plan was approved with three conditions. No code written yet.
+
+Actions:
+* Read docs, adapters, tests, cli, envfile; python read-only scans of dataset/evidence/records exports and sample gold
+* Wrote plan file under ~/.claude/plans
+* Appended this entry and a SESSION START entry to log.txt
+
+Context:
+tool=Claude Code
+model=claude-sonnet-5-5
+branch=feature/agent
+repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
+worktree=main
+parent_agent=none
+
+## [2026-10-25T00:30:00Z] T11 implemented, verified, mutation-checked (uncommitted)
+
+User Prompt (verbatim, secrets redacted):
+(approval of the T11 plan with three conditions; no new text)
+
+Agent Response Summary:
+Implemented adapter 3 test-first (53 new tests, 49 of 52 red against a stub first): ghost/adapters/service_export.py detects exports by structure, record_at is each row's observed_at, no capture_scope or join_key rows, search query keys classified by shape (email/phone keep kind, plain text is a name key), unparsed accounting at 0 on all 11 files. Real run: files 24 to 35, observations 1165 to 1461, unparsed 0, unclaimed 70 to 59; status mix 55/453/10 to 86/422/10, no_steps 376 to 277. Samples 21 and 23-30 have no extra steps; the only missing gold steps are account steps (T16 L1) and all-null analytics steps (T16 MA); audit_record_4128/7095/3954/1707 are all present from evidence_02 (T10), uncited in INCOMPLETE as in the gold. 43 of 45 mutants killed; the 2 survivors are equivalent. SPEC S1 and DESIGN section 3 updated. Nothing committed; no LLM calls; .env not read.
+
+Actions:
+* Added code/ghost/adapters/service_export.py, code/tests/export_fixture.py, code/tests/test_adapter_service_export.py
+* Edited adapters/__init__.py, tests/test_cli_pipeline.py (files=35), docs/SPEC.md (S1), docs/DESIGN.md (section 3)
+* Ran full suite (728 OK), CLI before/after with --no-llm and a missing GHOST_ENV_FILE, sample scorer, invariants, mutation script on a throwaway copy
+
+Context:
+tool=Claude Code
+model=claude-sonnet-5-5
+branch=feature/agent
+repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
+worktree=main
+parent_agent=none
