@@ -1,6 +1,6 @@
 # Linking Experiment — can activity adjacency or reported_at offset recover U1 links?
 
-Status: draft for review (2026-10-24). Analysis only: no solution code.
+Status: reviewed 2026-10-24. **Decision recorded as SPEC §9 L1: M6 first, then M9 for ties, always emit the account step with low-confidence flags, switchable with `LINK_FALLBACK=guess|omit`.** The recommendation below is kept for the record.
 Scratch scripts are in the session scratchpad, outside `code/`: `link_truth.py`, `link_experiment.py` … `link_experiment5.py`.
 
 ## Question
