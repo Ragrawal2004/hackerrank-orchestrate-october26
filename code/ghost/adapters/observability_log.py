@@ -18,7 +18,7 @@ subject key is unparsed; any other unlisted event is noise, counted per event in
 import json
 
 from .. import policy, store
-from . import common, logtok
+from . import common, logstate, logtok
 
 name = "observability_log"
 FORMAT_PREFIX = "log_obs_"
@@ -38,26 +38,7 @@ STARTED = {
     "export_download_check_started": "owner_key",
     "retained_order_query_started": "subject_ref",
 }
-FAILED_RESULTS = frozenset({"error", "timeout"})
-KNOWN_SYSTEMS = frozenset(policy.SYSTEM_CATEGORY) | {"support_platform", "analytics_platform"}
-
-
-class _Failed(Exception):
-    """The line reports a failed operation: understood, but it proves no state."""
-
-
-def _int(kv, field):
-    v = kv.get(field)
-    if not (isinstance(v, str) and v.isdigit()):
-        raise common.Skip(f"{field} is not a non-negative integer: {v!r}")
-    return int(v)
-
-
-def _bool(kv, field):
-    v = kv.get(field)
-    if v not in ("true", "false"):
-        raise common.Skip(f"{field} is not true/false: {v!r}")
-    return v == "true"
+KNOWN_SYSTEMS = logstate.KNOWN_SYSTEMS
 
 
 def _identifier(value):
@@ -77,31 +58,8 @@ def _matched(kv):
 
 # ---- state mappers: kv -> (state, attrs) -------------------------------------------------------
 
-def _profile(kv):
-    status = _int(kv, "http_status")
-    if status >= 500:
-        raise _Failed(f"http_status {status}")
-    rows = _int(kv, "rows")
-    if (rows, status) == (1, 200):
-        return "PRESENT", {"rows": rows, "http_status": status}
-    if (rows, status) == (0, 404):
-        return "ABSENT", {"rows": rows, "http_status": status}
-    raise common.Skip(f"rows {rows} and http_status {status} disagree")
-
-
-def _index(kv):
-    result = kv.get("result")
-    if result in FAILED_RESULTS:
-        raise _Failed(f"result {result}")
-    if result not in ("hit", "miss"):
-        raise common.Skip(f"unknown result {result!r}")
-    return ("PRESENT" if result == "hit" else "ABSENT"), {"result": result,
-                                                         "index": kv.get("index")}
-
-
 def _audit(kv):
-    if _int(kv, "rows") != 1:
-        raise common.Skip("audit read rows is not 1")
+    logstate.audit_rows(kv)
     return "PRESENT", {"rows": 1, "integrity_check": kv.get("integrity_check")}
 
 
@@ -122,13 +80,13 @@ def _attachment_scan(kv):
 
 
 def _identity_scan(kv):
-    if _int(kv, "direct_identifiers") < 1:
+    if logstate.int_field(kv, "direct_identifiers") < 1:
         raise common.Skip("identity scan without direct identifiers")
     return "IDENTIFIABLE", {"direct_identifiers": int(kv["direct_identifiers"]), **_matched(kv)}
 
 
 def _analytics_read(kv):
-    n = _int(kv, "direct_identifiers")
+    n = logstate.int_field(kv, "direct_identifiers")
     fields = {"email": common.lower(kv.get("email")), "phone": kv.get("phone")}
     exposed = common.any_set(*fields.values())
     if n == 0 and not exposed:
@@ -139,18 +97,14 @@ def _analytics_read(kv):
 
 
 def _contact(kv):
-    if _int(kv, "rows") != 1:
+    if logstate.int_field(kv, "rows") != 1:
         raise common.Skip("contact lookup rows is not 1")
-    return "PRESENT", {"rows": 1, "email_opt_in": _bool(kv, "email_opt_in")}
-
-
-def _connector(kv):
-    on = _bool(kv, "enabled")
-    return ("ACTIVE" if on else "DISABLED"), {"enabled": on}
+    return "PRESENT", {"rows": 1, "email_opt_in": logstate.bool_field(kv, "email_opt_in")}
 
 
 def _candidate(kv):
-    eligible, block = _bool(kv, "eligible"), _bool(kv, "deletion_block")
+    eligible = logstate.bool_field(kv, "eligible")
+    block = logstate.bool_field(kv, "deletion_block")
     ok = eligible and not block
     return ("RESTORABLE" if ok else "BLOCKED"), {"restore_allowed": ok, "eligible": eligible,
                                                  "deletion_block": block}
@@ -179,8 +133,8 @@ def _retained(kv):
 
 # event -> (store collection, mapper)
 STATE_EVENTS = {
-    "profile_lookup_completed": ("customer_profiles", _profile),
-    "index_query_completed": ("customer_search_documents", _index),
+    "profile_lookup_completed": ("customer_profiles", logstate.profile),
+    "index_query_completed": ("customer_search_documents", logstate.index),
     "audit_record_read_completed": ("security_audit_events", _audit),
     "message_pii_scan": ("support_conversations", _message_scan),
     "message_read": ("support_conversations", _message_read),
@@ -188,8 +142,8 @@ STATE_EVENTS = {
     "analytics_identity_scan": ("customer_analytics_reports", _identity_scan),
     "analytics_profile_read": ("customer_analytics_reports", _analytics_read),
     "contact_lookup_completed": ("contact_lookups", _contact),
-    "connector_heartbeat": ("connector_configurations", _connector),
-    "connector_config_loaded": ("connector_configurations", _connector),
+    "connector_heartbeat": ("connector_configurations", logstate.connector),
+    "connector_config_loaded": ("connector_configurations", logstate.connector),
     "restore_candidate_evaluated": ("backup_catalog", _candidate),
     "restore_authorization_completed": ("backup_catalog", _authorization),
     "export_download_check_completed": ("customer_export_jobs", _export),
@@ -197,13 +151,7 @@ STATE_EVENTS = {
 }
 
 
-def failed_form(event):
-    """`x_completed` -> `x_failed`; any other state event `e` -> `e_failed`."""
-    return event[:-len("_completed")] + "_failed" if event.endswith("_completed") \
-        else event + "_failed"
-
-
-FAILED_EVENTS = {failed_form(e): e for e in STATE_EVENTS}
+FAILED_EVENTS = {logstate.failed_form(e): e for e in STATE_EVENTS}
 
 
 # ---- detection ---------------------------------------------------------------------------------
@@ -343,9 +291,9 @@ def ingest(conn, file_id, text):
                 if not (isinstance(rid, str) and rid.strip()):
                     raise common.Skip("resource_id missing")
                 if event in FAILED_EVENTS:
-                    raise _Failed(f"event {event}")
+                    raise logstate.Failed(f"event {event}")
                 state, attrs = mapper(kv)
-            except _Failed as e:
+            except logstate.Failed as e:
                 notes.append({"type": "operation_failed", "locator": loc, "event": event,
                               "resource_id": rid, "reason": str(e)[:80]})
                 continue

@@ -86,7 +86,7 @@ Order = number of evaluation cases the adapter unlocks (anchor cases + early-com
 | 3 | **Service read-back export JSON** | 11 | 100 anchor | 21, 23–30 |
 | 4 | **Inventory SQL** (typed tables + `snapshot_scope`) | 11 | 99 anchor | 09 |
 | 5 | **Observability logs**: shared tokenizer for logfmt, bracketed, pipe, RFC5424, JSON-per-line, AWS escaped-kv | ~10 | 40 anchor + 59 early companion | 12, 15, 17, 19 (+09 via e06) |
-| 6 | **Read-back trace logs** (`resource_lookup_trace_*`, uses the tokenizer from 5) | 12 | 96 anchor | 03, 18, 20 |
+| 6 | **Read-back trace logs** (`resource_lookup_trace_*`, uses the tokenizer from 5) | 11 | 96 anchor | 03, 18, 20 |
 | 7 | **Ledger rows**: JSON lists, log `record_lookup` lines, handover text; one row schema in three containers | 6 | 47 anchor | 11, 13, 14 |
 | 8 | **Multimodal**: PDF via `pdftotext -layout`; screenshots via a vision LLM. Every extracted id is checked against ids known from activity, identities and other evidence; ids that don't check out are dropped | 4 + 11 | 12 anchor | 06, 07, 08 (handcrafted) |
 
@@ -100,6 +100,7 @@ Adapter notes:
   - `record_at` is the line time, and no capture scope is written;
   - failed operations (`_failed` events, 5xx, error/timeout) set no state;
   - an unlisted event carrying a resource or subject key is unparsed; other unlisted events are noise, counted per event in the parse report.
+- **6 Trace logs (`adapters/trace_log.py`, SPEC TR1).** Detected by structure (logfmt, no `instance`/`region`/`pod`, a started/completed pair with `resource_id` and `lookup_key`). `record_at` is the line time and no capture scope is written (a targeted `point_in_time` list). A started line is a resource-less link observation and a completed line carries the state, both joined by a trace-id join key, so the dossier's trace join and A8 check do the linking. State rules shared with adapter 5 live in `adapters/logstate.py` (failed operations set no state). Unlisted events with a resource or key are unparsed; mismatching export counts, reused trace ids and start/complete resource mismatches are unparsed too.
 - **7 Ledgers.** `record_type` is the policy category and `result` the state.
 - **8 Multimodal.** The prompt asks for a fixed JSON schema (resource ids, system, identifiers, state fields), and the result is cached by the image's sha256. With no API key, cached results are used if present; otherwise the file is skipped and the skip is logged.
 

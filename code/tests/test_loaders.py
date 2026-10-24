@@ -95,11 +95,11 @@ class StoreTests(unittest.TestCase):
     def test_tables_no_adapter_writes_yet_are_empty(self):
         self.assertEqual(count(self.conn, "select count(*) from extraction"), 0)
 
-    def test_only_the_log_adapter_writes_join_keys(self):
+    def test_only_the_log_adapters_write_join_keys(self):
         self.assertGreater(count(self.conn, "select count(*) from join_key"), 0)
         self.assertEqual(count(self.conn,
                                "select count(*) from join_key where file_id not in (select file_id "
-                               "from evidence_file where adapter='observability_log')"), 0)
+                               "from evidence_file where adapter in ('observability_log', 'resource_trace_log'))"), 0)
 
     def test_replica_files_are_claimed_and_clean(self):
         self.assertEqual(count(self.conn, "select count(*) from evidence_file where adapter='replica_sql'"), 12)
