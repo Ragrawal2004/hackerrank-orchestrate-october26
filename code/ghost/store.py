@@ -27,7 +27,7 @@ create table capture_scope (
 );
 create table activity (
     activity_id text primary key, event_time text not null, event_type text not null,
-    source_system text, target_system text, resource_id text, result text, details text,
+    source_system text, target_system text, resource_id text, reported_result text, details text,
     kind text, target_resource text, downstream_resource text,
     linked_identifier text, linked_user_id text
 );

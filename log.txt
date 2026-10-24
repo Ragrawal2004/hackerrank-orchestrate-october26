@@ -231,3 +231,25 @@ branch=feature/agent
 repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
 worktree=main
 parent_agent=none
+
+## [2026-10-24T14:21:35Z] T3 plan approved; Step 0 rename then llm wrapper
+
+User Prompt (verbatim, secrets redacted):
+Read AGENTS.md, CLAUDE.md, docs/SPEC.md and docs/DESIGN.md (§6, §7, §9, §11 T3). Plan T3 only. Step 0, as its own small commit: rename the activity column result to reported_result in the schema, loaders and tests, and show the tests green. Then T3, test-first, from the spec: llm.call(purpose, model, prompt, case_id, schema) as the only way code may reach the API. Temperature 0. Output validated against the schema. On error, a timeout or a bad response it raises LLMUnavailable so callers fall back to the deterministic path. Retries with backoff, limited. Usage counter: every call appends a line to runs/usage.jsonl with the timestamp, purpose, model, case_id, real input and output token counts from the API response, and cache_hit true or false. A cache hit makes no API call and records zero tokens. Cache: key is a hash of model, prompt and parameters. It lives in runs/cache/. --cold ignores and does not reuse the cache for that run. Key loading: a tiny runtime loader reads .env into os.environ only for keys not already set. Never print, log or return the key. Redact it from all logs and errors. Price table in config: do not invent prices. Leave the numbers as a clearly marked TODO with a place for the source URL and the date, and make the usage report fail loudly if a price is missing. Tests use a fake client only. No real API calls in any test. Provide a separate manual smoke script that I run myself, never run by tests. Propose in the plan whether to use the official anthropic SDK (with a requirements.txt) or plain HTTPS from the stdlib. Give the trade-off and wait for my choice. Do not read or print .env. Do not start T4. Show the plan, then wait for approval. Then show the failing tests, implement, show green, show mutation checks (drop the cache, miscount tokens, skip schema validation, log the key), and stop for my review before any commit.
+(Follow-up in turn: user chose the official anthropic SDK; plan approved via ExitPlanMode.)
+
+Agent Response Summary:
+Read the spec, design and code, produced the T3 plan, asked for the SDK choice (user chose the official SDK) and got plan approval. Starting Step 0 (column rename) next, then T3 test-first.
+
+Actions:
+* Read docs/SPEC.md, docs/DESIGN.md, code/ghost/*.py; ran the baseline unittest suite (62 green)
+* Wrote the plan file under ~/.claude/plans; asked the SDK question
+* .env was not read
+
+Context:
+tool=Claude Code
+model=claude-sonnet-5-5
+branch=feature/agent
+repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
+worktree=main
+parent_agent=none

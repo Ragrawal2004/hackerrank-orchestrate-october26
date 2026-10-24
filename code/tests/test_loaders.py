@@ -75,6 +75,17 @@ class StoreTests(unittest.TestCase):
             "select name from sqlite_master where type='table'")}
         self.assertTrue(TABLES <= names, TABLES - names)
 
+    def test_activity_stores_reported_result_claim(self):
+        cols = [r[1] for r in self.conn.execute("pragma table_info(activity)")]
+        self.assertIn("reported_result", cols)
+        self.assertNotIn("result", cols)
+        self.assertEqual(
+            self.conn.execute(
+                "select reported_result from activity where activity_id='activity_01'"
+            ).fetchone()[0],
+            "SUCCESS",
+        )
+
     def test_populated_tables(self):
         self.assertEqual(count(self.conn, "select count(*) from activity"), 4011)
         self.assertEqual(count(self.conn, "select count(*) from rule"), 15)

@@ -107,6 +107,10 @@ def load_store(dataset_dir):
                     r["target_system"], r["resource_id"], r["reported_result"], r["details"],
                     p["kind"], p["target_resource"], p["downstream_resource"],
                     p["linked_email"], p["linked_user_id"]))
-    conn.executemany("insert into activity values (?,?,?,?,?,?,?,?,?,?,?,?,?)", act)
+    conn.executemany(
+        "insert into activity(activity_id, event_time, event_type, source_system, "
+        "target_system, resource_id, reported_result, details, kind, target_resource, "
+        "downstream_resource, linked_identifier, linked_user_id) "
+        "values (?,?,?,?,?,?,?,?,?,?,?,?,?)", act)
     conn.commit()
     return conn
