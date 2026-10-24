@@ -54,7 +54,7 @@ The store is built once per run from `dataset/` and holds no per-case state. It 
 `build_dossier(case)` is a pure function of the case row and the store. It returns a JSON-serializable object, which is written to diagnostics.
 
 1. **Intent** (SPEC §2). If the request is a non-deletion → `NOT_APPLICABLE`, `[]`, stop.
-   - **Haiku classifies all 518 requests** (`claude-haiku-5-5`, temperature 0, prompt `code/prompts/intent.md`). The output must validate against the schema `{"intent": "DELETION"|"NON_DELETION", "reason": str}`, and responses are cached.
+   - **Haiku classifies all 518 requests** (`claude-haiku-5-5`, prompt `code/prompts/intent.md`). The output must validate against the schema `{"intent": "DELETION"|"NON_DELETION", "reason": str}`, and responses are cached. Determinism comes from the response cache and the prefilter override (below), not from sampling parameters.
    - **The deterministic prefilter runs on every case as the safety net.** It looks for negation and keep clauses ("do not close/delete", "not asking for deletion", "only … marketing", in every supported language) and uses multilingual deletion-vocabulary regexes. Its label is used alone when there is no API key, the call errors, or the response fails validation.
    - **Precedence when both labels exist:**
      1. If the prefilter found a **negation/keep clause**, its NON_DELETION label **overrides** the LLM.
@@ -249,7 +249,7 @@ code/evaluation/main.py, usage_report.py, custom_cases.md, family_checks.md, eva
 | Multilingual intent; negation traps | Wrong NOT_APPLICABLE | Prefilter for negation + LLM + CC3; all 10 known non-deletions checked |
 | Recreation/reopen semantics guessed from samples | False INCOMPLETE | Only explicit recreation events reopen; flagged |
 | Grader `case_id` sort (A1) | Possible row-order mismatch | Numeric, as in the input files; noted in the README |
-| LLM nondeterminism or no API key | Run-to-run drift | Temperature 0, response cache, deterministic fallback |
+| LLM nondeterminism or no API key | Run-to-run drift | Response cache (determinism comes from the cache and the prefilter override), deterministic fallback |
 | Over-fitting to the 32 samples | Inflated self-score | Report the samples separately from the invariants and family checks |
 
 ## 11. Task list (one commit per task)
