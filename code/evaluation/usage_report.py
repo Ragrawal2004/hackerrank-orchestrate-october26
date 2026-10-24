@@ -1,7 +1,8 @@
 """Aggregate runs/usage.jsonl into the usage report (skeleton for T20).
 
-Fails loudly (MissingPrice, non-zero exit) if any model in the usage log has no complete
-price entry in ghost.config.PRICES. Prices are never assumed.
+Fails loudly (non-zero exit) if any model in the usage log has no complete price entry in
+ghost.config.PRICES (MissingPrice), or if a line exceeds the input size its price is valid for
+(PriceTierExceeded, config.MAX_PRICED_INPUT_TOKENS: Haiku 100,000). Prices are never assumed.
 
     python3 code/evaluation/usage_report.py [--usage runs/usage.jsonl] [--requests N]
                                             [--run-id ID] [--out FILE]
@@ -24,6 +25,10 @@ class MissingPrice(Exception):
     pass
 
 
+class PriceTierExceeded(Exception):
+    """A call exceeded the input size the configured price is valid for."""
+
+
 def load_usage(path):
     with open(path, encoding="utf-8") as f:
         return [json.loads(line) for line in f if line.strip()]
@@ -43,6 +48,17 @@ def _check_prices(models, prices):
         raise MissingPrice("price table incomplete (fill config.PRICES): " + "; ".join(missing))
 
 
+def _check_tiers(lines, limits):
+    over = [l for l in lines
+            if l["model"] in limits and l["input_tokens"] > limits[l["model"]]]
+    if over:
+        worst = max(over, key=lambda l: l["input_tokens"])
+        raise PriceTierExceeded(
+            f"{len(over)} usage line(s) for {worst['model']} exceed {limits[worst['model']]} input "
+            f"tokens (largest: {worst['input_tokens']}, case {worst.get('case_id')}); the configured "
+            "price is only valid up to that size, so the cost cannot be stated")
+
+
 def _blank():
     return {"calls": 0, "cache_hits": 0, "errors": 0, "input_tokens": 0, "output_tokens": 0,
             "cost": 0.0}
@@ -52,6 +68,7 @@ def summarize(lines, prices, n_requests, run_id=None):
     if run_id is not None:
         lines = [l for l in lines if l.get("run_id") == run_id]
     _check_prices({l["model"] for l in lines}, prices)
+    _check_tiers(lines, config.MAX_PRICED_INPUT_TOKENS)
     models = {}
     for l in lines:
         m = models.setdefault(l["model"], _blank())
@@ -108,7 +125,7 @@ def main(argv=None):
     n = args.requests or len(loaders.load_requests(root / "dataset"))
     try:
         summary = summarize(load_usage(args.usage), config.PRICES, n, args.run_id)
-    except MissingPrice as e:
+    except (MissingPrice, PriceTierExceeded) as e:
         print(f"error: {e}", file=sys.stderr)
         return 1
     md = render_markdown(summary, config.PRICES)

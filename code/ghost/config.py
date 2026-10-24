@@ -20,15 +20,23 @@ LLM_MAX_ATTEMPTS = 3
 LLM_BACKOFF_SECONDS = 1.0
 LLM_TIMEOUT_SECONDS = 60.0
 
-# TODO(user): fill in from the provider's published pricing. Do NOT guess numbers.
-# Prices are USD per million tokens. Record where they came from (source_url) and the
-# date you read them (as_of, YYYY-MM-DD). evaluation/usage_report.py fails loudly while
-# any value is None for a model that appears in runs/usage.jsonl.
-_UNPRICED = {"input_per_mtok": None, "output_per_mtok": None, "source_url": None, "as_of": None}
+# Prices are USD per million tokens, from the provider's published pricing page, as read on
+# `as_of`. evaluation/usage_report.py fails loudly if a model in runs/usage.jsonl has any
+# value missing here.
+_PRICING_URL = "https://platform.claude.com/docs/en/about-claude/pricing"
+_PRICING_AS_OF = "2026-10-24"
 PRICES = {
-    DEFAULT_INTENT_MODEL: dict(_UNPRICED),
-    DEFAULT_SCREENSHOT_MODEL: dict(_UNPRICED),
+    DEFAULT_INTENT_MODEL: {  # also DEFAULT_CATEGORY_MODEL (same model); rate holds for prompts up to 100,000 tokens
+        "input_per_mtok": 0.10, "output_per_mtok": 0.50,
+        "source_url": _PRICING_URL, "as_of": _PRICING_AS_OF},
+    DEFAULT_SCREENSHOT_MODEL: {
+        "input_per_mtok": 2.00, "output_per_mtok": 10.00,
+        "source_url": _PRICING_URL, "as_of": _PRICING_AS_OF},
 }
+
+# Largest input (tokens in one call) the PRICES rate is valid for, per model. A usage line
+# above it means the price is not known to apply, so the usage report refuses to price it.
+MAX_PRICED_INPUT_TOKENS = {DEFAULT_INTENT_MODEL: 100_000}
 
 
 def find_repo_root(start=None):

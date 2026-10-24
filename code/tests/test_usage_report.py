@@ -1,3 +1,5 @@
+import contextlib
+import io
 import json
 import tempfile
 import unittest
@@ -87,18 +89,78 @@ class UsageReportTests(unittest.TestCase):
                          encoding="utf-8")
             self.assertEqual(len(usage_report.load_usage(p)), 2)
 
-    def test_default_price_table_is_an_unfilled_todo(self):
-        # Guards against inventing numbers: the shipped table must be filled by the user.
+    def test_shipped_price_table_matches_the_published_prices(self):
         from ghost import config
-        for model, p in config.PRICES.items():
+        src = "https://platform.claude.com/docs/en/about-claude/pricing"
+        expected = {"claude-haiku-5-5": (0.10, 0.50), "claude-sonnet-5-5": (2.00, 10.00)}
+        for model, (inp, out) in expected.items():
             with self.subTest(model=model):
-                self.assertTrue(any(v is None for v in p.values()))
+                p = config.PRICES[model]
+                self.assertEqual((p["input_per_mtok"], p["output_per_mtok"]), (inp, out))
+                self.assertEqual(p["source_url"], src)
+                self.assertEqual(p["as_of"], "2026-10-24")
+
+    def test_every_default_model_is_priced(self):
+        from ghost import config
+        for model in {config.DEFAULT_INTENT_MODEL, config.DEFAULT_CATEGORY_MODEL,
+                      config.DEFAULT_SCREENSHOT_MODEL}:
+            with self.subTest(model=model):
+                self.assertTrue(all(v is not None for v in config.PRICES[model].values()))
 
     def test_main_exits_nonzero_on_missing_price(self):
         with tempfile.TemporaryDirectory() as d:
             p = Path(d) / "usage.jsonl"
-            p.write_text(json.dumps(line("claude-haiku-5-5", 1, 1)) + "\n", encoding="utf-8")
+            p.write_text(json.dumps(line("model-with-no-price", 1, 1)) + "\n", encoding="utf-8")
             self.assertNotEqual(usage_report.main(["--usage", str(p), "--requests", "1"]), 0)
+
+    def _usage_file(self, d, lines):
+        p = Path(d) / "usage.jsonl"
+        p.write_text("\n".join(json.dumps(l) for l in lines) + "\n", encoding="utf-8")
+        return p
+
+    def test_main_succeeds_on_priced_models_within_the_haiku_limit(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = self._usage_file(d, [line("claude-haiku-5-5", 100_000, 50),
+                                     line("claude-sonnet-5-5", 5_000, 50)])
+            with contextlib.redirect_stdout(io.StringIO()) as out:
+                rc = usage_report.main(["--usage", str(p), "--requests", "2"])
+            self.assertEqual(rc, 0)
+            self.assertIn("claude-haiku-5-5", out.getvalue())
+
+    def test_haiku_line_over_100000_input_tokens_fails(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = self._usage_file(d, [line("claude-haiku-5-5", 10, 1),
+                                     line("claude-haiku-5-5", 100_001, 1)])
+            with contextlib.redirect_stderr(io.StringIO()) as err:
+                rc = usage_report.main(["--usage", str(p), "--requests", "2"])
+            self.assertNotEqual(rc, 0)
+            self.assertIn("100000", err.getvalue())
+            self.assertIn("claude-haiku-5-5", err.getvalue())
+
+    def test_summarize_raises_the_tier_error_for_one_oversized_haiku_line(self):
+        from ghost import config
+        lines = [line("claude-haiku-5-5", 100_001, 1)]
+        with self.assertRaises(usage_report.PriceTierExceeded):
+            usage_report.summarize(lines, config.PRICES, n_requests=1)
+
+    def test_the_limit_is_per_line_not_a_total(self):
+        from ghost import config
+        lines = [line("claude-haiku-5-5", 60_000, 1), line("claude-haiku-5-5", 60_000, 1)]
+        s = usage_report.summarize(lines, config.PRICES, n_requests=2)
+        self.assertEqual(s["total"]["input_tokens"], 120_000)
+
+    def test_the_haiku_limit_does_not_apply_to_other_models(self):
+        from ghost import config
+        s = usage_report.summarize([line("claude-sonnet-5-5", 150_000, 1)], config.PRICES, n_requests=1)
+        self.assertEqual(s["total"]["input_tokens"], 150_000)
+
+    def test_lines_outside_the_selected_run_are_not_checked(self):
+        from ghost import config
+        old = line("claude-haiku-5-5", 200_000, 1)
+        old["run_id"] = "old"
+        s = usage_report.summarize([old, line("claude-haiku-5-5", 10, 1)], config.PRICES,
+                                   n_requests=1, run_id="r")
+        self.assertEqual(s["total"]["input_tokens"], 10)
 
 
 if __name__ == "__main__":
