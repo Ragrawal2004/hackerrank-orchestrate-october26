@@ -1,0 +1,26 @@
+{
+  "detail_reference": null,
+  "detail_resource_id": "audit_record_003",
+  "file_id": "evidence_37",
+  "indicators": {
+    "enabled": "not_shown",
+    "identifiers_present": false,
+    "identity_conflict": false,
+    "listed_present": true,
+    "restore_allowed": "not_shown"
+  },
+  "model": "claude-opus-5-5",
+  "schema_version": 1,
+  "screen_kind": "security",
+  "sha256": "ca59f693f4e7002466b3fdeaf1bb6763618770963dd811b60003772d07b4b03b",
+  "subject_refs": [
+    [
+      "user_id",
+      "user_03"
+    ]
+  ],
+  "variants": [
+    "A",
+    "B"
+  ]
+}

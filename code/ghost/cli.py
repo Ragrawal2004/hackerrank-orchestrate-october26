@@ -6,7 +6,7 @@ from pathlib import Path
 from collections import Counter
 
 from . import (adapters, config, diagnostics, dossier, envfile, identity, intent, linker, llm, loaders,
-               policy, steps)
+               multimodal_read, policy, steps)
 from .adapters import replica_sql
 
 HEADER = ["case_id", "deletion_status", "steps_json"]
@@ -112,7 +112,8 @@ def main(argv=None):
     except ValueError as e:
         print(f"error: {e}", file=sys.stderr)
         return 2
-    llm.configure(runs_dir=cfg.runs_dir, cold=cfg.cold)
+    llm.configure(runs_dir=cfg.runs_dir, cold=cfg.cold,
+                  budgets={"screenshot": config.DEFAULT_SCREENSHOT_BUDGET})
     dataset = args.dataset or cfg.dataset_dir
     out = args.out or cfg.default_output
     requests = loaders.load_requests(dataset)
@@ -124,7 +125,15 @@ def main(argv=None):
     (cfg.runs_dir / diagnostics.FILE_NAME).unlink(missing_ok=True)  # diagnostics are per run
     results = intent.classify_all(requests, cfg.intent_model, not cfg.no_llm, cfg.runs_dir)
     non_deletion = {r["case_id"] for r in results if r["label"] == "NON_DELETION"}
-    conn = loaders.load_store(dataset)
+    reader = (multimodal_read.make_reader(cfg.screenshot_model)
+              if cfg.has_api_key and not cfg.no_llm else None)
+    loaded = {}
+    conn = loaders.load_store(dataset, reader=reader, extractions_dir=config.extractions_dir(),
+                              report=loaded)
+    for file_id, notes in sorted(loaded["multimodal_notes"].items()):
+        for note in notes:  # why a screenshot/PDF yielded nothing, or what was dropped
+            diagnostics.log_event(cfg.runs_dir, f"file:{file_id}", "multimodal_note",
+                                  **{("note" if k == "type" else k): v for k, v in note.items()})
     rules = policy.load_rules(conn)
     rows, statuses, retained_missing, no_steps, tally = [], Counter(), {}, 0, Counter()
     dossiers = build_pool(conn, everyone)
@@ -153,6 +162,7 @@ def main(argv=None):
     unclaimed = conn.execute("select count(*) from evidence_file where format is null").fetchone()[0]
     clock = replica_sql.count_clock_choice(conn, [c for c in requests if c["case_id"] not in non_deletion])
     print(adapters.format_summary(summ, clock, unclaimed))
+    print(adapters.format_multimodal(loaded["multimodal"]))
     print(format_policy_summary(statuses, no_steps, retained_missing))
     print(format_linker_summary(cfg.link_fallback, tally))
     print(f"wrote {len(requests)} rows to {out}")

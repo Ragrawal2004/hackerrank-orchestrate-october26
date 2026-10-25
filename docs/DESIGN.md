@@ -102,7 +102,7 @@ Adapter notes:
   - an unlisted event carrying a resource or subject key is unparsed; other unlisted events are noise, counted per event in the parse report.
 - **6 Trace logs (`adapters/trace_log.py`, SPEC TR1).** Detected by structure (logfmt, no `instance`/`region`/`pod`, a started/completed pair with `resource_id` and `lookup_key`). `record_at` is the line time and no capture scope is written (a targeted `point_in_time` list). A started line is a resource-less link observation and a completed line carries the state, both joined by a trace-id join key, so the dossier's trace join and A8 check do the linking. State rules shared with adapter 5 live in `adapters/logstate.py` (failed operations set no state). Unlisted events with a resource or key are unparsed; mismatching export counts, reused trace ids and start/complete resource mismatches are unparsed too.
 - **7 Ledgers.** `record_type` is the policy category and `result` the state.
-- **8 Multimodal.** The prompt asks for a fixed JSON schema (resource ids, system, identifiers, state fields), and the result is cached by the image's sha256. With no API key, cached results are used if present; otherwise the file is skipped and the skip is logged.
+- **8 Multimodal (`adapters/multimodal.py`, SPEC MM1/MM2).** The reader (`multimodal_read.py`, prompt `prompts/screenshot.md`) returns two independent reads in a fixed fact schema; the adapter validates ids against the dataset, requires both reads to agree, and writes explicit observations at the manifest capture time. Agreed facts are committed under `code/extractions/`; with no API key those are used, otherwise the file is skipped and the skip is logged (`multimodal:` line and `multimodal_note` diagnostics).
 
 ## 4. Policy engine
 For each linked resource:
@@ -158,11 +158,11 @@ For each linked resource:
 - Each call appends a row to `runs/usage.jsonl`:
   `ts, purpose (intent|category|screenshot|pdf), model, case_id, input_tokens, output_tokens, cache_hit (bool), error, run_id`. One line is written per API attempt (a failed attempt logs the exception class name in `error`; a reply that fails validation keeps the tokens it cost, with `error=BadResponse`) and one per cache hit.
   The token counts come from the API response `usage` field, never from estimates.
-- Responses are cached by `sha256(model, prompt, params)` in `runs/cache/`, where `params` = `{max_tokens, schema}` (no sampling parameters are sent; image input extends the key when it is added in T17). A cache hit makes no API call and logs zero tokens. `--cold` never reads the cache but still writes it. **The final run is cold** (`--cold`), so `usage.jsonl` reflects real calls.
+- Responses are cached by `sha256(model, prompt, params)` in `runs/cache/`, where `params` = `{max_tokens, schema}` (no sampling parameters are sent; `images` (sha256 of each image) and `variant` extend `params` only when present, so earlier cache keys are unchanged). A cache hit makes no API call and logs zero tokens. `--cold` never reads the cache but still writes it. **The final run is cold** (`--cold`), so `usage.jsonl` reflects real calls.
 - `code/evaluation/usage_report.py` aggregates per model and overall: calls, input and output tokens, total and average tokens per request (÷ 518), and cost from a per-model price table in `code/ghost/config.py`. A cache hit counts as zero calls and zero cost, and total calls are shown separately from total cache hits. The price table carries a source URL and date per model, no numbers are assumed, and the report fails loudly while any price is missing. The script renders `code/evaluation/usage_report.md`.
 - Model plan (expected calls in a cold full run):
   - intent: `claude-haiku-5-5`, **one call for each of the 518 requests**;
-  - screenshots: `claude-sonnet-5-5`, about 11 calls;
+  - screenshots and PDFs: `claude-opus-5-5` (chosen over `claude-sonnet-5-5` in the bake-off, SPEC MM3), two reads per file, at most 40 real calls and $3.00 per run (`DEFAULT_SCREENSHOT_BUDGET`; the gateway refuses a call that would pass either limit, cache hits are free);
   - category disambiguation (§4.1): `claude-haiku-5-5`, 0 calls by default, and only for the ambiguous records when `CATEGORY_LLM=on`.
   All models are configurable through env vars. `purpose` ∈ intent | category | screenshot | pdf.
 
@@ -276,7 +276,7 @@ code/evaluation/main.py, usage_report.py, custom_cases.md, family_checks.md, eva
 | T14 | Adapter 6: read-back trace logs | Samples 03, 18, 20 match except U1/U2 steps |
 | T15 | Adapter 7: ledgers (JSON / log / text) | Samples 11, 13, 14 match except L1 steps (done, see SPEC LG1) |
 | T16 | L1 account linker (M6, clock-safe) + MA analytics diagnostics + `LINK_FALLBACK` + diagnostics events (done, see SPEC L1) | M6 7/7 on the samples; 24 guessed steps on the 518; `omit` removes every guessed step; a guess never changes a status |
-| T17 | Adapter 8: PDF + screenshot extraction (prompt in `code/prompts/screenshot.md`) | Samples 06–08 match; F-J cases produce steps |
+| T17 | Adapter 8: PDF + screenshot extraction (prompt in `code/prompts/screenshot.md`); gateway image input and hard caps (code done, real run pending approval; see SPEC MM1/MM2) | Sample 07 matches; F-J cases produce steps or a logged reason; 06 and 08 wait for the deferred text files |
 | T18 | Custom cases CC1–CC5 + overlay runner | All 5 pass |
 | T19 | Uncovered-family spot checks + fixes; optional §4.1 category LLM (`CATEGORY_LLM`, prompt `code/prompts/category.md`), evaluated on/off | `family_checks.md` diffs are clean or explained; on/off diff recorded |
 | T20 | Full cold run; `evaluation_report.md`, `usage_report.md`, final README; `code.zip` dry-run listing | 518 rows, invariants green, reports written, zip has no dataset/venv/nested archives |

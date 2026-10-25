@@ -1,0 +1,26 @@
+{
+  "detail_reference": "user_17",
+  "detail_resource_id": "tombstone_17",
+  "file_id": "evidence_42",
+  "indicators": {
+    "enabled": "not_shown",
+    "identifiers_present": false,
+    "identity_conflict": false,
+    "listed_present": true,
+    "restore_allowed": "not_shown"
+  },
+  "model": "claude-opus-5-5",
+  "schema_version": 1,
+  "screen_kind": "registry",
+  "sha256": "68c28a72afd6ed184d5990d15c543f8a516face204f0360f732755a8a63c28be",
+  "subject_refs": [
+    [
+      "user_id",
+      "user_17"
+    ]
+  ],
+  "variants": [
+    "A",
+    "B"
+  ]
+}

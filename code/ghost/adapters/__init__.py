@@ -3,8 +3,8 @@ the fact store. `load_evidence` offers every manifest file to the registry; a fi
 claims keeps format NULL and is reported as unclaimed (later tasks add the other adapters)."""
 from pathlib import Path
 
-from . import (inventory_sql, ledger_json, ledger_log, ledger_text, observability_log, replica_sql, service_export,
-               snapshot_bundle, trace_log)
+from . import (inventory_sql, ledger_json, ledger_log, ledger_text, multimodal, observability_log, replica_sql,
+               service_export, snapshot_bundle, trace_log)
 
 ADAPTERS = [replica_sql, snapshot_bundle, service_export, inventory_sql, observability_log,
             trace_log, ledger_json, ledger_log, ledger_text]
@@ -26,14 +26,28 @@ def select(text, adapters=None):
     return claims[0] if claims else None
 
 
-def load_evidence(conn, dataset_dir):
-    """Run the adapters over every manifest file. Returns {"claimed": [...], "unclaimed": [...]}."""
-    claimed, unclaimed = [], []
+def load_evidence(conn, dataset_dir, reader=None, extractions_dir=None):
+    """Run the adapters over every manifest file.
+
+    Text files go to the structure-detecting adapters first. PNG and PDF files (found by their
+    signature) go to the multimodal adapter second, so it can check ids against what the text
+    adapters found. `reader` reads one image/PDF twice (None: only stored extractions are used).
+    Returns {"claimed": [...], "unclaimed": [...], "multimodal": {file_id: status},
+    "multimodal_notes": {file_id: [note, ...]}}."""
+    claimed, unclaimed, modal, notes, binary = [], [], {}, {}, []
     for file_id, path in conn.execute("select file_id, path from evidence_file order by file_id"
                                       ).fetchall():
         try:
-            text = (Path(dataset_dir) / path).read_text(encoding="utf-8")
-        except (OSError, UnicodeDecodeError):
+            raw = (Path(dataset_dir) / path).read_bytes()
+        except OSError:
+            unclaimed.append(file_id)
+            continue
+        if multimodal.detect(raw):
+            binary.append((file_id, raw))
+            continue
+        try:
+            text = raw.decode("utf-8")
+        except UnicodeDecodeError:
             unclaimed.append(file_id)
             continue
         picked = select(text)
@@ -42,7 +56,13 @@ def load_evidence(conn, dataset_dir):
             continue
         picked[0].ingest(conn, file_id, text)
         claimed.append(file_id)
-    return {"claimed": claimed, "unclaimed": unclaimed}
+    for file_id, raw in binary:
+        report = multimodal.ingest(conn, file_id, raw, reader, extractions_dir=extractions_dir)
+        modal[file_id] = report["status"]
+        notes[file_id] = report["notes"]
+        (unclaimed if report["status"] == "skipped" else claimed).append(file_id)
+    return {"claimed": claimed, "unclaimed": unclaimed, "multimodal": modal,
+            "multimodal_notes": notes}
 
 
 def summary(conn):
@@ -54,6 +74,13 @@ def summary(conn):
     bad = [r[0] for r in conn.execute(
         "select file_id from parse_report where unparsed > 0 order by file_id")]
     return {"files": files, "observations": obs, "unparsed": unparsed, "unparsed_files": bad}
+
+
+def format_multimodal(statuses):
+    """The `multimodal:` line: how many PNG/PDF files were read, loaded, disagreed or skipped."""
+    n = lambda k: sum(1 for v in statuses.values() if v == k)  # noqa: E731
+    return (f"multimodal: files={len(statuses)} agreed={n('agreed')} loaded={n('loaded')} "
+            f"disagreed={n('disagreed')} skipped={n('skipped')}")
 
 
 def format_summary(summ, clock_choice, unclaimed):

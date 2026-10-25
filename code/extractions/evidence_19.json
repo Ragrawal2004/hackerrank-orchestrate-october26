@@ -1,0 +1,30 @@
+{
+  "detail_reference": null,
+  "detail_resource_id": "analytics_7438",
+  "file_id": "evidence_19",
+  "indicators": {
+    "enabled": "not_shown",
+    "identifiers_present": true,
+    "identity_conflict": false,
+    "listed_present": true,
+    "restore_allowed": "not_shown"
+  },
+  "model": "claude-opus-5-5",
+  "schema_version": 1,
+  "screen_kind": "analytics",
+  "sha256": "4e4cb259bc2010b622b0c53fe5872258f994fefc23452a83bb27473758693484",
+  "subject_refs": [
+    [
+      "email_hash",
+      "09f05b9fb59a2493e9349bbfeac4ab5288a534689c8ecbe44bcc106f5ede50a7"
+    ],
+    [
+      "user_id",
+      "user_20"
+    ]
+  ],
+  "variants": [
+    "A",
+    "B"
+  ]
+}

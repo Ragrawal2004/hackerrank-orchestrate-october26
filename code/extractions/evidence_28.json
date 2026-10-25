@@ -1,0 +1,26 @@
+{
+  "detail_reference": null,
+  "detail_resource_id": "support_1034",
+  "file_id": "evidence_28",
+  "indicators": {
+    "enabled": "not_shown",
+    "identifiers_present": true,
+    "identity_conflict": false,
+    "listed_present": true,
+    "restore_allowed": "not_shown"
+  },
+  "model": "claude-opus-5-5",
+  "schema_version": 1,
+  "screen_kind": "support",
+  "sha256": "542b7aec17e6b2f38827896e7eb52c70e4bfaaca22433621be1f80f54884e944",
+  "subject_refs": [
+    [
+      "email_hash",
+      "2223309bb52ac82b56ee55504acf27956503f83a61a81703bd9f24a5f5a292c6"
+    ]
+  ],
+  "variants": [
+    "A",
+    "B"
+  ]
+}

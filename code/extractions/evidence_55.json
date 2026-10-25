@@ -1,0 +1,26 @@
+{
+  "detail_reference": null,
+  "detail_resource_id": "audit_record_003",
+  "file_id": "evidence_55",
+  "indicators": {
+    "enabled": "not_shown",
+    "identifiers_present": false,
+    "identity_conflict": false,
+    "listed_present": true,
+    "restore_allowed": "not_shown"
+  },
+  "model": "claude-opus-5-5",
+  "schema_version": 1,
+  "screen_kind": "document_audit_extract",
+  "sha256": "8a6428a899dc8d0769048c8e6f6db70c614fe65fd1e0bb87a43c7927c27ecdda",
+  "subject_refs": [
+    [
+      "user_id",
+      "user_03"
+    ]
+  ],
+  "variants": [
+    "A",
+    "B"
+  ]
+}

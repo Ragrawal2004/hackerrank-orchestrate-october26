@@ -13,7 +13,7 @@ CATEGORY_LLM_VALUES = ("on", "off")
 
 DEFAULT_INTENT_MODEL = "claude-haiku-5-5"
 DEFAULT_CATEGORY_MODEL = "claude-haiku-5-5"
-DEFAULT_SCREENSHOT_MODEL = "claude-sonnet-5-5"
+DEFAULT_SCREENSHOT_MODEL = "claude-opus-5-5"  # T17 bake-off: Sonnet 5.5 misread 4 of 15 files
 
 # LLM call settings (ghost.llm). max_tokens is always sent; the API requires it.
 LLM_MAX_TOKENS = 1024
@@ -30,10 +30,28 @@ PRICES = {
     DEFAULT_INTENT_MODEL: {  # also DEFAULT_CATEGORY_MODEL (same model); rate holds for prompts up to 100,000 tokens
         "input_per_mtok": 0.10, "output_per_mtok": 0.50,
         "source_url": _PRICING_URL, "as_of": _PRICING_AS_OF},
-    DEFAULT_SCREENSHOT_MODEL: {
+    "claude-sonnet-5-5": {  # the other model in the screenshot bake-off (T17)
         "input_per_mtok": 2.00, "output_per_mtok": 10.00,
         "source_url": _PRICING_URL, "as_of": _PRICING_AS_OF},
+    DEFAULT_SCREENSHOT_MODEL: {  # claude-opus-5-5
+        "input_per_mtok": 4.00, "output_per_mtok": 20.00,
+        "source_url": _PRICING_URL, "as_of": "2026-10-25"},
 }
+
+# Hard cap for the screenshot + PDF reads of one run (llm.configure(budgets=...)); the gateway
+# refuses a real call that would pass either limit. Cache hits are free and not counted.
+DEFAULT_SCREENSHOT_BUDGET = {"max_calls": 40, "max_usd": 3.00}
+
+# Agreed screenshot/PDF facts (hashes and ids only) committed with the code, so a run without an
+# API key reproduces the same observations. Written only by a run that has a reader.
+EXTRACTIONS_DIR = Path(__file__).resolve().parents[1] / "extractions"
+
+
+def extractions_dir(environ=None):
+    """GHOST_EXTRACTIONS_DIR (used by the model bake-off to keep trial reads out of the committed
+    folder) or the committed default."""
+    env = os.environ if environ is None else environ
+    return Path(env["GHOST_EXTRACTIONS_DIR"]) if env.get("GHOST_EXTRACTIONS_DIR") else EXTRACTIONS_DIR
 
 # Largest input (tokens in one call) the PRICES rate is valid for, per model. A usage line
 # above it means the price is not known to apply, so the usage report refuses to price it.

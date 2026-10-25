@@ -1,0 +1,30 @@
+{
+  "detail_reference": null,
+  "detail_resource_id": "search_428",
+  "file_id": "evidence_09",
+  "indicators": {
+    "enabled": "not_shown",
+    "identifiers_present": true,
+    "identity_conflict": false,
+    "listed_present": true,
+    "restore_allowed": "not_shown"
+  },
+  "model": "claude-opus-5-5",
+  "schema_version": 1,
+  "screen_kind": "search",
+  "sha256": "75afdb0ae53a4510c83399a70d88073cb4fb2747454095756e4ddad1a8c70605",
+  "subject_refs": [
+    [
+      "email_hash",
+      "7afbbca4e0e4d5228a422ca39f5453505d365849ba5e20a288a203f0ba505c3d"
+    ],
+    [
+      "user_id",
+      "user_13"
+    ]
+  ],
+  "variants": [
+    "A",
+    "B"
+  ]
+}

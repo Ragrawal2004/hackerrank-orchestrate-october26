@@ -1653,3 +1653,122 @@ branch=feature/agent
 repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
 worktree=main
 parent_agent=none
+
+## [2026-10-25T02:18:01Z] SESSION START
+
+tool=Claude Code
+model=claude-sonnet-5-5
+Repo Root: /Users/rounakagrawal/hackerrank-orchestrate-october26
+Branch: feature/agent
+Worktree: main
+Parent Agent: none
+Language: py
+Time Remaining: not configured
+
+## [2026-10-25T02:40:00Z] T17 plan approved; step-0 baseline and red tests written
+
+User Prompt (verbatim, secrets redacted):
+Read AGENTS.md, CLAUDE.md, docs/SPEC.md, docs/DESIGN.md (§3 adapters, the PDF and screenshot reader, §11 T17), docs/FAMILY_DISCOVERY.md, docs/SAMPLE_DERIVATION.md, the LLM gateway (code/ghost/llm.py), and the T9 to T15 adapters and their tests as the pattern. Plan T17 only: the PDF and screenshot reader. [... full T17 brief: local PDF text first, vision only where needed, ids checked against known dataset ids, two independent reads that must agree, facts not steps, gateway with cache/usage log/hard caps, prompts/screenshot.md, model choice with cost, test-first with a mocked model, mutation checks on a throwaway copy, one approved real run, do not read .env, no commit until OK. Also compare Sonnet 5.5 vs Opus 5.5 cost for the 11 images and add a Sonnet second opinion for intent.] Show the plan and wait.
+[follow-up] Q1 accept the flip only if the rules say so, give a table for 33/34/35/52. Q2 emit nothing for 55, 63, 39. Q3 commit code/extractions/*.json, minimal fields. Q4 defer e56/e57/e59/e61 and count linked cases. Q5 drop the Sonnet second opinion from T17. Everything else approved. Revise the plan and wait.
+[approval] Plan approved (ExitPlanMode).
+
+Agent Response Summary:
+Planned T17 in read-only mode, revised it with the user's answers (second opinion dropped, 33/34/35/52 evidence table, 0 of 518 cases link to the deferred text files), and got approval. After approval: appended SESSION START, captured the step-0 baseline with --no-llm into a scratch runs dir with GHOST_ENV_FILE pointing at an empty file (.env not read), and wrote the red tests (gateway vision + budgets, multimodal adapter, dossier integration). No implementation code yet; stopped at the red-test checkpoint as planned.
+
+Actions:
+* appended SESSION START to log.txt
+* scratchpad baseline runs: 518 and 32 samples with --no-llm (no repo files touched)
+* new tests: code/tests/mm_fixture.py, test_llm_vision.py, test_adapter_multimodal.py, test_dossier_multimodal.py
+* ran the new tests: all red (22 gateway tests: 21 errors, 1 intended regression guard green; adapter and dossier modules fail to import)
+
+Context:
+tool=Claude Code
+model=claude-sonnet-5-5
+branch=feature/agent
+repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
+worktree=main
+parent_agent=none
+
+## [2026-10-25T04:10:00Z] T17 implementation: reader, prompt, CLI, docs, mutation checks
+
+User Prompt (verbatim, secrets redacted):
+Apply the fix as you proposed, and delete the unused ex_hash helper. Also, in the same test, add a second assertion that proves the check can fail: take the stored text, inject a literal phone number like "+91 98765 43210" and a literal email, and assert the check catches both. Keep every other assertion in that test unchanged. Then continue in order: reader and prompt, CLI, docs, full suite, mutation checks, before and after report, then the bake-off command with the caps and the cost, and stop there. Do not read .env. No commit until I say OK.
+
+Agent Response Summary:
+Fixed the one wrong test as approved (phone scan now strips 64-hex hashes; ex_hash replaced by a raw_text_leaks helper that is shown to catch an injected phone and email). Added the reader (multimodal_read.py) and prompt (prompts/screenshot.md), wired load_store and the CLI (multimodal: line, multimodal_note diagnostics, shared 40-call / $3.00 cap, GHOST_EXTRACTIONS_DIR override), updated SPEC MM1/MM2 and DESIGN. Mutation checks on a throwaway copy killed 15 of 17 mutants after adding one cache-hit cap test; the cost-cap mutant is equivalent. No model call was made and .env was not read.
+
+Actions:
+* edited code/tests/test_adapter_multimodal.py (approved fix only)
+* new: code/ghost/multimodal_read.py, code/prompts/screenshot.md, code/tests/test_multimodal_read.py, code/tests/test_llm_budget_cache.py
+* edited: code/ghost/{loaders,cli,config}.py, code/ghost/adapters/__init__.py, docs/SPEC.md, docs/DESIGN.md
+* ran --no-llm on 518 and 32 samples (output byte-identical to baseline; no stored extractions yet)
+* mutation runner in the scratchpad on a copy of code/ plus AGENTS.md
+
+Context:
+tool=Claude Code
+model=claude-sonnet-5-5
+branch=feature/agent
+repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
+worktree=main
+parent_agent=none
+
+## [2026-10-25T05:20:00Z] T17 screen key and Sonnet/Opus bake-off
+
+User Prompt (verbatim, secrets redacted):
+es to both. First write code/evaluation/screen_key.json from the 11 images: ids and indicators only (screen_kind, detail_resource_id, enabled/restore_allowed/identifiers_present as shown, listed_present), no emails, names or phones. Show me the key. Then run the bake-off exactly as proposed (Sonnet 5.5, then Opus 5.5), through the gateway, with the caps. Afterwards show one table: for each of the 11 images and 4 PDFs, did read A and read B agree, did the validated facts match the key, for each model, plus the real cost from runs/usage.jsonl for each model. Recommend one model. Do not copy anything into code/extractions/ yet; stop and show me the table. Also re-run the full suite once, since GHOST_EXTRACTIONS_DIR was added after the last full run. Do not read .env. No commit until I say OK.
+
+Agent Response Summary:
+Wrote the hand-checked key (15 files, ids and indicators only) and a scorer (screen_key_check.py); tightened two prompt lines (record id vs reference; a bare user ref is not an identifier). Ran the bake-off once per model through the gateway into /tmp/bakeoff (30 calls each, under the 40 cap). Nothing was copied into code/extractions/. Full suite: 1190 tests OK.
+
+Actions:
+* new: code/evaluation/screen_key.json, code/evaluation/screen_key_check.py; edited code/prompts/screenshot.md
+* real model calls: 60 (Sonnet 5.5 and Opus 5.5), usage in /tmp/bakeoff/<model>/usage.jsonl
+* full suite run (scratch runs dir, network forbidden): OK
+
+Context:
+tool=Claude Code
+model=claude-sonnet-5-5
+branch=feature/agent
+repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
+worktree=main
+parent_agent=none
+
+## [2026-10-25T06:30:00Z] T17 agreement rule, Opus default, extractions, before/after
+
+User Prompt (verbatim, secrets redacted):
+Decisions: (1) Apply fix 1: compare screen_kind, resource, identifiers and indicators between read A and read B, and compare detail_reference only when it resolved the resource. Add tests for both directions (a label-only difference agrees; a screen_kind difference disagrees; a differing reference that resolved the resource disagrees) and add mutants for the new rule. (2) No e58 exception. Leave sample 07 unfixed, and record it in SPEC and for the evaluation report as a known gap: the PDF prints support_001 but no other file has that id, and we do not loosen the known-id rule. (3) Set the default screenshot model to claude-opus-5-5 in config. Rerun Opus from the cache (it must make zero new calls; show the usage line), then copy only the agreed and validated extractions into code/extractions/, and run the no-leak test on the copied files. Then run the full suite, the mutation checks on the changed rule, and the before and after report: status mix, adapters line, multimodal line, the 32-sample table, and the 12 F-J case diffs (33, 34, 35, 52 should show the explained flips; 39, 55, 63 should show a logged reason). Confirm that a cold run with the committed extractions makes no image calls. Do not read .env. No commit until I say OK.
+
+Agent Response Summary:
+Applied the agreement rule (reference compared only when it resolved the resource) with 11 new tests and 5 new mutants, set Opus 5.5 as the default, reran Opus from the cache (30 cache hits, 0 real calls), copied 15 extractions and added a committed no-leak test. Before/after: 518 now COMPLETE 152 / INCOMPLETE 356 / NOT_APPLICABLE 10; two samples gain steps the gold lacks (case_07 object_19, case_17 tombstone_17), reported as an open regression.
+
+Actions:
+* edited code/ghost/adapters/multimodal.py, code/ghost/config.py, code/tests/test_config.py, code/tests/test_cli_pipeline.py (stale counts), docs/SPEC.md (MM3), docs/DESIGN.md
+* new: code/tests/test_multimodal_agreement.py, code/tests/test_extractions_committed.py, code/extractions/*.json (15)
+* no new model calls
+
+Context:
+tool=Claude Code
+model=claude-sonnet-5-5
+branch=feature/agent
+repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
+worktree=main
+parent_agent=none
+
+## [2026-10-25T07:00:00Z] Commit T17
+
+User Prompt (verbatim, secrets redacted):
+Commit T17 on feature/agent. First run git status and show it. Stage by name only, files and directories: code/ghost (all changed or new files), code/prompts/screenshot.md, code/extractions/ (the 15 json files), code/evaluation/screen_key.json, code/evaluation/screen_key_check.py, any other changed or new file under code/evaluation and code/tests, requirements files if changed, docs/SPEC.md, docs/DESIGN.md, log.txt. Do not stage output.csv or anything under runs/ or /tmp. If any other file changed, do not stage it, list it and ask me. Do not use git add . or -A. Message: "T17: PDF and screenshot reader (adapter 8), vision gateway with caps, Opus default, committed extractions". Body as given (9 of 518 cases changed; known open and known gap notes). The commit gate runs the full suite; that is expected. Show git log --oneline -3 and git status.
+
+Agent Response Summary:
+Showed git status; every changed file was on the allowed list (only output.csv left untracked and unstaged). Staged by name and committed on feature/agent with the given message.
+
+Actions:
+* git add (named paths), git commit
+
+Context:
+tool=Claude Code
+model=claude-sonnet-5-5
+branch=feature/agent
+repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
+worktree=main
+parent_agent=none

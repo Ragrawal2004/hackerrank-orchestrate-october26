@@ -116,8 +116,12 @@ class PipelineCliTests(unittest.TestCase):
         self.assertRegex(self.proc.stdout, r"retained_missing: \d+ cases / \d+ records")
 
     def test_prints_the_adapter_summary_with_zero_unparsed(self):
-        self.assertIn("adapters: files=75 ", self.proc.stdout)
-        self.assertIn(" unclaimed_files=19", self.proc.stdout)
+        # 75 text files plus the 15 screenshots and PDFs read from code/extractions; the 4 left
+        # unclaimed are the deferred text files e56, e57, e59, e61 (SPEC MM2)
+        self.assertIn("adapters: files=90 ", self.proc.stdout)
+        self.assertIn(" unclaimed_files=4", self.proc.stdout)
+        self.assertIn("multimodal: files=15 agreed=0 loaded=15 disagreed=0 skipped=0",
+                      self.proc.stdout)
         self.assertIn(" unparsed=0 ", self.proc.stdout)
         self.assertIn(" clock_choice_matters=0 ", self.proc.stdout)
         self.assertNotIn("WARNING", self.proc.stdout)

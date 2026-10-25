@@ -1,0 +1,30 @@
+{
+  "detail_reference": "NST-2026-0718-1842",
+  "detail_resource_id": "export_1842",
+  "file_id": "evidence_18",
+  "indicators": {
+    "enabled": "not_shown",
+    "identifiers_present": true,
+    "identity_conflict": false,
+    "listed_present": true,
+    "restore_allowed": "not_shown"
+  },
+  "model": "claude-opus-5-5",
+  "schema_version": 1,
+  "screen_kind": "document_statement",
+  "sha256": "abe1877efe69fb5617a79c0d22df9113372e1e6804f8986b0fd408563ecca448",
+  "subject_refs": [
+    [
+      "email_hash",
+      "0649eddaba37af918d82b64da379e6623d34cf290b2a26ecbe53bafc1484f8af"
+    ],
+    [
+      "user_id",
+      "user_18"
+    ]
+  ],
+  "variants": [
+    "A",
+    "B"
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "detail_reference": null,
+  "detail_resource_id": "backup_9287",
+  "file_id": "evidence_32",
+  "indicators": {
+    "enabled": "not_shown",
+    "identifiers_present": true,
+    "identity_conflict": false,
+    "listed_present": true,
+    "restore_allowed": "not_shown"
+  },
+  "model": "claude-opus-5-5",
+  "schema_version": 1,
+  "screen_kind": "backup",
+  "sha256": "2c246aa5843bec609b9ddfdf1154cd81e0fd61996f83954735e9856e48c18bf3",
+  "subject_refs": [
+    [
+      "email_hash",
+      "7001f88650909c41c862cc4394921012deaa96f9d5ef925f4b052ad6f30aeb62"
+    ]
+  ],
+  "variants": [
+    "A",
+    "B"
+  ]
+}

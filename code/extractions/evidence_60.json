@@ -1,0 +1,21 @@
+{
+  "detail_reference": null,
+  "detail_resource_id": "marketing_001",
+  "file_id": "evidence_60",
+  "indicators": {
+    "enabled": "not_shown",
+    "identifiers_present": true,
+    "identity_conflict": true,
+    "listed_present": true,
+    "restore_allowed": "not_shown"
+  },
+  "model": "claude-opus-5-5",
+  "schema_version": 1,
+  "screen_kind": "marketing",
+  "sha256": "51fa0e6a38f8fa3629ba1b0d0b90b4ed139715956b97bfd09a6f1a6232c15df5",
+  "subject_refs": [],
+  "variants": [
+    "A",
+    "B"
+  ]
+}

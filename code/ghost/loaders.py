@@ -83,7 +83,9 @@ def _identity_rows(identities, audit):
     return rows
 
 
-def load_store(dataset_dir):
+def load_store(dataset_dir, reader=None, extractions_dir=None, report=None):
+    """Build the fact store. reader / extractions_dir feed the multimodal adapter; `report`, when
+    given, is filled with the adapters' result (claimed, unclaimed, multimodal statuses, notes)."""
     conn = store.connect()
     store.create_schema(conn)
     identities = load_identities(dataset_dir)
@@ -112,6 +114,8 @@ def load_store(dataset_dir):
         "target_system, resource_id, reported_result, details, kind, target_resource, "
         "downstream_resource, linked_identifier, linked_user_id) "
         "values (?,?,?,?,?,?,?,?,?,?,?,?,?)", act)
-    adapters.load_evidence(conn, dataset_dir)
+    result = adapters.load_evidence(conn, dataset_dir, reader=reader, extractions_dir=extractions_dir)
+    if report is not None:
+        report.update(result)
     conn.commit()
     return conn

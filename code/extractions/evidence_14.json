@@ -1,0 +1,26 @@
+{
+  "detail_reference": null,
+  "detail_resource_id": "data_flow_1121",
+  "file_id": "evidence_14",
+  "indicators": {
+    "enabled": "not_shown",
+    "identifiers_present": true,
+    "identity_conflict": false,
+    "listed_present": true,
+    "restore_allowed": "not_shown"
+  },
+  "model": "claude-opus-5-5",
+  "schema_version": 1,
+  "screen_kind": "connector",
+  "sha256": "e81fabc93ea1b5f4c918d934cdb2bea05d61737adfcc29f281494f5d8ec46355",
+  "subject_refs": [
+    [
+      "email_hash",
+      "ea61073600454d4cb320cd63802b6e63ceb0a1398a7b4dd10049a71729471d00"
+    ]
+  ],
+  "variants": [
+    "A",
+    "B"
+  ]
+}

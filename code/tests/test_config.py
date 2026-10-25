@@ -16,7 +16,7 @@ class ConfigTests(unittest.TestCase):
         cfg = config.build_config(environ={})
         self.assertEqual(cfg.intent_model, "claude-haiku-5-5")
         self.assertEqual(cfg.category_model, "claude-haiku-5-5")
-        self.assertEqual(cfg.screenshot_model, "claude-sonnet-5-5")
+        self.assertEqual(cfg.screenshot_model, "claude-opus-5-5")
 
     def test_env_overrides(self):
         cfg = config.build_config(

@@ -1,0 +1,21 @@
+{
+  "detail_reference": "delivery_confirmation_19.pdf",
+  "detail_resource_id": "object_19",
+  "file_id": "evidence_46",
+  "indicators": {
+    "enabled": "not_shown",
+    "identifiers_present": false,
+    "identity_conflict": false,
+    "listed_present": true,
+    "restore_allowed": "not_shown"
+  },
+  "model": "claude-opus-5-5",
+  "schema_version": 1,
+  "screen_kind": "object_storage",
+  "sha256": "96e9a191380c29b9e0ab997007268c4cd6353cb6721ebd1ed4a32599d8d37e04",
+  "subject_refs": [],
+  "variants": [
+    "A",
+    "B"
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "detail_reference": null,
+  "detail_resource_id": null,
+  "file_id": "evidence_27",
+  "indicators": {
+    "enabled": "not_shown",
+    "identifiers_present": false,
+    "identity_conflict": false,
+    "listed_present": true,
+    "restore_allowed": "not_shown"
+  },
+  "model": "claude-opus-5-5",
+  "schema_version": 1,
+  "screen_kind": "document_register",
+  "sha256": "0919c931c018565e82502050ee1026918c1baf210c8ba23d2386415dd46efb10",
+  "subject_refs": [],
+  "variants": [
+    "A",
+    "B"
+  ]
+}

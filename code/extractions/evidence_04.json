@@ -1,0 +1,34 @@
+{
+  "detail_reference": null,
+  "detail_resource_id": "account_5762",
+  "file_id": "evidence_04",
+  "indicators": {
+    "enabled": "not_shown",
+    "identifiers_present": true,
+    "identity_conflict": false,
+    "listed_present": true,
+    "restore_allowed": "not_shown"
+  },
+  "model": "claude-opus-5-5",
+  "schema_version": 1,
+  "screen_kind": "account",
+  "sha256": "d5c32ca5b6e1a2b4bbe9f5d41835ef1fd5d4f7061dab9067a4f9f88cea3c1861",
+  "subject_refs": [
+    [
+      "email_hash",
+      "db83a42f1f41508b4c44fc526100f9663ea8f72b347f16769ef3ac6975015fa2"
+    ],
+    [
+      "phone_hash",
+      "35e54849bd8ff024f14f3b516fcf39e3446f42057ac78875fffa510ef4b43449"
+    ],
+    [
+      "user_id",
+      "user_11"
+    ]
+  ],
+  "variants": [
+    "A",
+    "B"
+  ]
+}

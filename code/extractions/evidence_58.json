@@ -1,0 +1,30 @@
+{
+  "detail_reference": null,
+  "detail_resource_id": null,
+  "file_id": "evidence_58",
+  "indicators": {
+    "enabled": "not_shown",
+    "identifiers_present": true,
+    "identity_conflict": false,
+    "listed_present": true,
+    "restore_allowed": "not_shown"
+  },
+  "model": "claude-opus-5-5",
+  "schema_version": 1,
+  "screen_kind": "document_attachment",
+  "sha256": "0c58960759d4821b030b467d6fe531e83e38e7f50b3de3389a735521d0001f18",
+  "subject_refs": [
+    [
+      "email_hash",
+      "284c7b87b8237e241293c9e81c8f0bef10c4dc1dffefb382c45107ea40c39668"
+    ],
+    [
+      "phone_hash",
+      "28aa7e9c7d6518233a4366aa9731c5b7f740f002233e11f8a16daf54e5779234"
+    ]
+  ],
+  "variants": [
+    "A",
+    "B"
+  ]
+}
