@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 LINK_FALLBACK_VALUES = ("guess", "omit")
+DEFAULT_LINK_FALLBACK = "omit"  # guess is an opt-in switch (SPEC L1)
 CATEGORY_LLM_VALUES = ("on", "off")
 
 DEFAULT_INTENT_MODEL = "claude-haiku-5-5"
@@ -76,7 +77,7 @@ def build_config(cli_link_fallback=None, cli_category_llm=None, no_llm=False,
     """CLI value beats env value beats default. Never stores the API key."""
     env = os.environ if environ is None else environ
     root = find_repo_root()
-    link = _choice("LINK_FALLBACK", cli_link_fallback or env.get("LINK_FALLBACK") or "guess",
+    link = _choice("LINK_FALLBACK", cli_link_fallback or env.get("LINK_FALLBACK") or DEFAULT_LINK_FALLBACK,
                    LINK_FALLBACK_VALUES)
     cat = _choice("CATEGORY_LLM", cli_category_llm or env.get("CATEGORY_LLM") or "off",
                   CATEGORY_LLM_VALUES)

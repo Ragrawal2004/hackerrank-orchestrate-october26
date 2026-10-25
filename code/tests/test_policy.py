@@ -431,5 +431,96 @@ class ContractTests(unittest.TestCase):
         self.assertEqual(run(a, b, ACCOUNT_OK)["steps"], run(ACCOUNT_OK, b, a)["steps"])
 
 
+def guess(state="ABSENT", pick="evidence_9", rid="account_9"):
+    """A guessed (L1) account as dossier.add_guessed_account shapes it."""
+    r = res("account_service", rid, state, "USER_PROFILE", pick=pick, confidence="low")
+    r["link"]["method"] = "M6"
+    r["state_basis"] = "l1_guess"
+    r["citation"]["rule"] = "O" if pick else None
+    return r
+
+
+AUDIT_OK = res("security_service", "audit_record_1", "PRESENT", "SECURITY_AUDIT_LOG",
+               {"retention_until": AFTER})
+SEARCH_LEFT = res("search_service", "search_1", "PRESENT", "SEARCH_INDEX_ENTRY")
+
+
+class GuessedAccountTests(unittest.TestCase):
+    """T16: a guessed account is verification only and never changes the status."""
+
+    def test_complete_case_cites_the_rule_o_capture(self):
+        p = run(AUDIT_OK, guess())
+        self.assertEqual(p["status"], "COMPLETE")
+        self.assertIn(("VERIFICATION", "VERIFY_RECORD_ABSENT", "account_service", "account_9",
+                       "evidence_9"), ops(p))
+        self.assertEqual(events(p, "guessed_account_uncited"), [])
+
+    def test_complete_case_without_a_capture_is_uncited_and_logged(self):
+        p = run(AUDIT_OK, guess(pick=None))
+        self.assertEqual(p["status"], "COMPLETE")
+        self.assertIn(("VERIFICATION", "VERIFY_RECORD_ABSENT", "account_service", "account_9", ""),
+                      ops(p))
+        ev = events(p, "guessed_account_uncited")
+        self.assertEqual([(e["system_id"], e["resource_id"]) for e in ev],
+                         [("account_service", "account_9")])
+
+    def test_contradicted_guess_is_skipped_in_a_complete_case(self):
+        p = run(AUDIT_OK, guess(state="PRESENT"))
+        self.assertEqual(p["status"], "COMPLETE")
+        self.assertNotIn("account_9", [o[3] for o in ops(p)])
+        self.assertEqual(len(events(p, "guessed_account_contradicted")), 1)
+
+    def test_incomplete_case_verifies_the_guess_uncited(self):
+        p = run(SEARCH_LEFT, guess())
+        self.assertEqual(p["status"], "INCOMPLETE")
+        self.assertIn(("VERIFICATION", "VERIFY_RECORD_ABSENT", "account_service", "account_9", ""),
+                      ops(p))
+        self.assertEqual([o for o in ops(p) if o[3] == "account_9" and o[0] != "VERIFICATION"], [])
+
+    def test_a_cited_guess_alone_cannot_make_a_case_complete(self):
+        p = run(guess())
+        self.assertEqual(p["status"], "INCOMPLETE")
+        self.assertEqual(p["steps"], [])
+        self.assertEqual(len(events(p, "no_steps")), 1)
+
+    def test_a_cited_guess_cannot_rescue_a_nothing_verifiable_case(self):
+        unciteable = res("security_service", "audit_record_1", "PRESENT", "SECURITY_AUDIT_LOG",
+                         {"retention_until": AFTER}, pick=None)
+        p = run(unciteable, guess())
+        self.assertEqual(p["status"], "INCOMPLETE")
+        self.assertEqual(p["steps"], [])
+
+    def test_guess_adds_nothing_to_a_no_steps_case(self):
+        unciteable_left = res("search_service", "search_1", "PRESENT", "SEARCH_INDEX_ENTRY", pick=None)
+        p = run(unciteable_left, AUDIT_OK, guess())
+        self.assertEqual(p["status"], "INCOMPLETE")
+        self.assertEqual(p["steps"], [])
+
+    def test_a_wrong_guess_never_changes_status_or_findings(self):
+        bases = {
+            "complete": [AUDIT_OK],
+            "incomplete": [SEARCH_LEFT, AUDIT_OK],
+            "no_resources": [],
+            "unverified": [res("search_service", "search_1", "PRESENT", "SEARCH_INDEX_ENTRY",
+                               pick=None)],
+            "nothing_verifiable": [res("security_service", "audit_record_1", "PRESENT",
+                                       "SECURITY_AUDIT_LOG", {"retention_until": AFTER}, pick=None)],
+        }
+        for name, base in bases.items():
+            without = run(*base)
+            findings = [o for o in ops(without) if o[0] != "VERIFICATION"]
+            for state in ("ABSENT", "PRESENT", "IDENTIFIABLE", "REDACTED"):
+                for pick in ("evidence_9", None):
+                    with self.subTest(base=name, state=state, pick=pick):
+                        p = run(*base, guess(state=state, pick=pick))
+                        self.assertEqual(p["status"], without["status"])
+                        self.assertEqual([o for o in ops(p) if o[0] != "VERIFICATION"], findings)
+                        extra = [o for o in ops(p) if o not in ops(without)]
+                        self.assertTrue(all(o[3] == "account_9" and o[0] == "VERIFICATION"
+                                            for o in extra), extra)
+                        if not without["steps"]:
+                            self.assertEqual(p["steps"], [])
+
+
 if __name__ == "__main__":
     unittest.main()

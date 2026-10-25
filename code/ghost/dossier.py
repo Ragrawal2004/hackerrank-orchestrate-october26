@@ -406,6 +406,57 @@ def _resolve(rid, sys, link, obs, oids, scopes, acts, limit, events):
     }
 
 
+# ---- guessed account (SPEC L1) --------------------------------------------------------------
+
+def add_guessed_account(conn, d, pick):
+    """Add the linker's low-confidence account to the dossier (returned, changed in place).
+
+    Its required end state is ABSENT and nothing in it is evidence of a link: the state is the
+    latest clock-gated observation of that account if any (so policy can see a contradiction),
+    otherwise ABSENT with basis `l1_guess`. It never takes a Rule E citation; it cites the latest
+    in-scope capture of account_service that omits it (Rule O, dump before inventory), and a
+    partial (complete=0) capture may be cited because nothing is inferred from it (SPEC T16-C)."""
+    if pick is None:
+        return d
+    store.register_functions(conn)
+    audit_at, rid = d["audit_at"], pick["resource_id"]
+    limit = _t(audit_at)
+    seen = conn.execute(
+        f"select o.obs_id, o.file_id, {_RECORD_AT}, o.state {_OBS_FROM} "
+        "and o.system_id = 'account_service' and o.resource_id = ?", (audit_at, rid)).fetchall()
+    seen.sort(key=lambda r: (_t(r[2]), r[0]))
+    state = seen[-1][3] if seen else "ABSENT"
+    captured = {(r[1], _t(r[2])) for r in seen}
+    omitting = {}
+    if state == "ABSENT":
+        for s in _checked(_query_scopes(conn, audit_at), "record_at", audit_at, "capture_scope"):
+            if s["system_id"] == "account_service" and _citable(s["manifest_at"], limit) \
+                    and (s["file_id"], _t(s["record_at"])) not in captured:
+                omitting[s["file_id"]] = {"file_id": s["file_id"], "manifest_at": s["manifest_at"],
+                                          "adapter": s.get("adapter")}
+    rule_o = sorted(omitting.values(), key=lambda x: (x["adapter"] in EXTRACT_ADAPTERS,
+                                                      -_t(x["manifest_at"]), x["file_id"]))
+    if len(rule_o) > 1:
+        d["events"].append({"type": "rule_o_ambiguous", "system_id": "account_service",
+                            "resource_id": rid, "candidates": [x["file_id"] for x in rule_o]})
+    d["resources"].append({
+        "system_id": "account_service",
+        "resource_id": rid,
+        "link": {"method": pick["method"], "via": {"activity_id": pick["activity_id"]},
+                 "confidence": "low"},
+        "category": "USER_PROFILE",
+        "state": state,
+        "state_basis": "l1_guess",
+        "state_source": None,
+        "recreated_by": None,
+        "citation": {"rule": "O" if rule_o else None, "pick": rule_o[0]["file_id"] if rule_o else None,
+                     "rule_e": [], "rule_o": rule_o},
+    })
+    d["activities_used"] = sorted(set(d["activities_used"]) | {pick["activity_id"]})
+    assert_clock(conn, d)
+    return d
+
+
 # ---- final check ----------------------------------------------------------------------------
 
 def assert_clock(conn, d):

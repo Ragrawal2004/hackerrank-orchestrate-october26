@@ -34,11 +34,12 @@ TITLES = {
     "P4": "every finding has its remediation and verification; every remediation a finding",
     "P5": "no resource gets two conflicting end states",
     "E1": "every cited id exists and is dated at or before audit_at",
+    "A1": "every deletion row with steps has an account step or a logged link excuse",
 }
 ORDER = list(TITLES)
 
 NOT_CHECKED = (
-    "every deletion case has an account step or a logged link_unresolved (needs T8/T16)",
+    "every deletion case has an account step or a logged link_unresolved (A1: pass diagnostics)",
     "no retained category is ever DELETEd (enforced by an assert in policy.to_steps, T8)",
     "no fact dated after audit_at was used; trap families F-B4/F-D4 (dossier.assert_clock, T7)",
     "determinism: two runs give a byte-identical output.csv (test_cli_pipeline.test_deterministic)",
@@ -116,6 +117,16 @@ def _load_events(path, name):
 def load_guessed_uncited(path):
     """{(case_id, resource_id)} for every guessed_account_uncited event; empty if no file."""
     return {(ev["case_id"], ev["resource_id"]) for ev in _load_events(path, "guessed_account_uncited")}
+
+
+def load_account_excused(path):
+    """{case_id} with a logged reason for having no account step: link_unresolved, a contradicted
+    guess, or an evidence account that no file could cite (unciteable)."""
+    out = {ev["case_id"] for name in ("link_unresolved", "guessed_account_contradicted")
+           for ev in _load_events(path, name)}
+    out |= {ev["case_id"] for ev in _load_events(path, "unciteable")
+            if ev.get("system_id") == "account_service"}
+    return out
 
 
 def load_no_steps(path):
@@ -325,9 +336,16 @@ def _check_evidence(cid, parsed, times, audit_at, res):
                                f"{audit_at[cid]}")
 
 
+def _check_account_step(cid, parsed, res, excused):
+    if parsed and cid not in excused and not any(s["system_id"] == "account_service" for s in parsed):
+        res.add("A1", cid, "no account_service step and no link_unresolved / unciteable excuse")
+
+
 def check_table(header, rows, expected_case_ids=None, evidence_times=None, audit_at=None,
-                guessed_uncited=None, allow_stub=False, no_steps=None):
+                guessed_uncited=None, allow_stub=False, no_steps=None, account_excused=None):
     res = Result()
+    if account_excused is not None:
+        res.not_checked = [n for n in res.not_checked if "account step" not in n]
     res.stats["rows"] = len(rows)
     guessed = set(guessed_uncited or ())
     no_steps = set(no_steps or ())
@@ -362,6 +380,8 @@ def check_table(header, rows, expected_case_ids=None, evidence_times=None, audit
         if status in STATUSES:
             _check_case_status(cid, status, parsed, res, allow_stub, guessed, used, no_steps)
             _check_conflicts(cid, parsed, res)
+            if account_excused is not None and status != "NOT_APPLICABLE":
+                _check_account_step(cid, parsed, res, account_excused)
         if e1_on:
             _check_evidence(cid, parsed, evidence_times, audit_at, res)
     res.stats["guessed_account_uncited"] = len(used)
@@ -378,7 +398,8 @@ def check_file(path, requests_path=None, dataset_dir=None, diagnostics_path=None
         audit = load_audit_at(requests_path)
     guessed = load_guessed_uncited(diagnostics_path) if diagnostics_path else set()
     no_steps = load_no_steps(diagnostics_path) if diagnostics_path else set()
-    return check_table(header, rows, expected, times, audit, guessed, allow_stub, no_steps)
+    excused = load_account_excused(diagnostics_path) if diagnostics_path else None
+    return check_table(header, rows, expected, times, audit, guessed, allow_stub, no_steps, excused)
 
 
 # ---------------------------------------------------------------- report
@@ -413,6 +434,8 @@ def format_report(res, name):
             out.extend(_wrap(case_ids))
             for d in sorted({v.detail for v in vs})[:3]:
                 out.append(f"    e.g. {d}")
+        elif i == "A1" and any("account step" in n for n in res.not_checked):
+            continue  # not run: listed under NOT CHECKED YET
         elif i in res.skipped:
             out.append(f"SKIPPED {i} {TITLES[i]}: {res.skipped[i]}")
         else:

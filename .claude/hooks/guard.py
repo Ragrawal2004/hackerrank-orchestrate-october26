@@ -26,7 +26,7 @@ import subprocess
 import sys
 
 TEST_CMD = ["python3", "-m", "unittest", "discover", "-s", "code/tests", "-t", "code"]
-TEST_TIMEOUT = 300
+TEST_TIMEOUT = 1200
 CASE_INSENSITIVE_FS = sys.platform in ("darwin", "win32")
 
 # --- shell parsing -----------------------------------------------------------------

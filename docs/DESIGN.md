@@ -67,8 +67,8 @@ The store is built once per run from `dataset/` and holds no per-case state. It 
    - **trace join**: same `file_id` and `join_key` (started line → completed line);
    - **reference join**: `source_resource_id` / `customer_reference` of an already-linked resource;
    - **activity link**: `LINK_RESOURCE_IDENTITY` naming a subject identifier; "repopulated downstream resource X" from a linked resource; a sync from a linked resource;
-   - **account linker (L1)**: only when no primary account was linked by the above. It respects `LINK_FALLBACK`, and every pick is `confidence=low`.
-   - **analytics linker (MA only)**: only when no analytics record was linked by evidence. It removes `ANONYMIZE_RECORD` candidates in the learned window (−114 … +29 min around `reported_at`) that are evidence-linked to another case. It picks one **only if exactly one remains**, and the pick is `confidence=low`. **On ties (or zero candidates) no analytics step is emitted**, under both `LINK_FALLBACK=guess` and `omit`. There is no rank alignment and no nearest-offset guess for analytics.
+   - **account linker (L1, `linker.py`)**: only when no primary account was linked by the above, only in the opt-in `LINK_FALLBACK=guess` mode (the default is `omit`). M6 only: window candidates minus those another subject's case links by evidence at *this* audit_at (clock-safe); exactly one left is a low-confidence pick, otherwise `link_unresolved`. `omit` makes every such case `link_unresolved`.
+   - **analytics linker (MA)**: same elimination over `ANONYMIZE_RECORD` rows, **diagnostics only**: a unique candidate is logged as `analytics_candidate` (withheld), a tie or none as `analytics_unresolved`. No analytics step is emitted in either mode (SPEC L1: MA as a step lowered F1 in every variant).
    Conflicts (A8): a direct identifier match beats a catalog or activity claim, and the conflict is logged.
 5. **State.** For each `(system_id, resource_id)` the latest observation by `record_at` wins. Ties are broken by `explicit` over `omission`, then by the later manifest. Absence by omission is derived from `capture_scope` (complete, in scope, `record_at ≤ audit_at`) and is only used when there is no explicit observation, or when the omission is later than the explicit one.
    **Recreation:** a recreation activity (`SYNC … final checkpoint` to a replica, `repopulated`, `RESTORE_BACKUP`) after the latest ABSENT observation reopens the resource as PRESENT. The evidence is the activity_id, and it is flagged. Plain SUCCESS/FAILED results never change state.
@@ -208,7 +208,7 @@ For each linked resource:
    - per-family status mix, steps per case, how often each flag appears;
    - **`retained_missing`**: the number of cases and records (A9), with case_ids;
    - **intent agreement**: LLM vs prefilter rate, with the case_ids that disagree;
-   - analytics MA ties left unresolved, and `category_llm` overrides (when on).
+   - analytics MA candidates withheld and ties/none unresolved, and `category_llm` overrides (when on).
 3. **Custom cases** (≥3; written to `code/evaluation/custom_cases.md` with inputs and expected outputs, and run as overlays: a temp copy of `dataset/` with added rows and files, via `--dataset <dir>`):
    - **CC1 post-audit trap:** a bundle record stamped after `audit_at` shows the account present → the case stays COMPLETE and the late file is not cited.
    - **CC2 historical email in a regional replica:** a ghost row in `eu_west` keyed by an old email → INCOMPLETE with `REPORT_REMAINING_RECORD` / `DELETE_RECORD` / `VERIFY_RECORD_ABSENT`, `system_id` logical.
@@ -228,7 +228,7 @@ code/ghost/intent.py          deterministic prefilter + LLM classifier
 code/ghost/llm.py             the only SDK user: cache + usage counter
 code/ghost/adapters/          replica_sql, bundle, service_export, inventory_sql, logtok, observability, trace, ledger, multimodal
 code/ghost/dossier.py         two-clock cut, linking, state, citations
-code/ghost/linker.py          L1 accounts (M6 → M9 → M7 → widen); MA analytics (unique only)
+code/ghost/linker.py          L1 accounts (M6, clock-safe elimination); MA analytics (diagnostics only)
 code/ghost/policy.py          category, rule, compliance, status
 code/ghost/steps.py           templates, citations, ordering, serialization
 code/ghost/diagnostics.py
@@ -240,7 +240,7 @@ code/evaluation/main.py, usage_report.py, custom_cases.md, family_checks.md, eva
 | Risk | Impact | Mitigation |
 |---|---|---|
 | L1 guesses are wrong (≈16 % on held-out; real U1 accuracy is unknown and likely worse) | Each wrong account costs one missing and one extra step | Flagged; `omit` mode for comparison; guesses never change status |
-| Guessed account step in a COMPLETE case with no Rule O capture gets `evidence_id=""` | Departs from the contract ("COMPLETE verification must cite evidence"); probably scored as a citation miss | Logged as `guessed_account_uncited` and counted per run; switch to `LINK_FALLBACK=omit` if the count is large |
+| Guessed account step in a COMPLETE case with no Rule O capture gets `evidence_id=""` | Departs from the contract ("COMPLETE verification must cite evidence"); probably scored as a citation miss | Logged as `guessed_account_uncited` and counted per run; `omit` is now the default, so this arises only in the opt-in guess mode (0 uncited on the 518) |
 | 71 % of cases are in families with no sample | Rules learned on samples may not carry over | Family spot checks (§8.4), invariants, structure-based adapters |
 | A U3 clock is misapplied in trap families (30 cases) | Wrong status and late citations | Dossier assertion + invariant + CC1 |
 | Log syntax edge cases (AWS escaping, multi-line JSON) | Missed links | Tokenizer round-trip tests on every log file; count unparsed lines per file |
@@ -275,7 +275,7 @@ code/evaluation/main.py, usage_report.py, custom_cases.md, family_checks.md, eva
 | T13 | Adapter 5: log tokenizer + observability (6 syntaxes) | Samples 12, 15, 17, 19 match; 0 unparsed meaningful lines across all logs |
 | T14 | Adapter 6: read-back trace logs | Samples 03, 18, 20 match except U1/U2 steps |
 | T15 | Adapter 7: ledgers (JSON / log / text) | Samples 11, 13, 14 match except L1 steps (done, see SPEC LG1) |
-| T16 | L1 account linker + MA analytics linker (unique only) + `LINK_FALLBACK` + diagnostics file | Reproduces the LINKING_EXPERIMENT numbers (M6 151/152; MA 44/45 held-out); MA ties emit no step |
+| T16 | L1 account linker (M6, clock-safe) + MA analytics diagnostics + `LINK_FALLBACK` + diagnostics events (done, see SPEC L1) | M6 7/7 on the samples; 24 guessed steps on the 518; `omit` removes every guessed step; a guess never changes a status |
 | T17 | Adapter 8: PDF + screenshot extraction (prompt in `code/prompts/screenshot.md`) | Samples 06–08 match; F-J cases produce steps |
 | T18 | Custom cases CC1–CC5 + overlay runner | All 5 pass |
 | T19 | Uncovered-family spot checks + fixes; optional §4.1 category LLM (`CATEGORY_LLM`, prompt `code/prompts/category.md`), evaluated on/off | `family_checks.md` diffs are clean or explained; on/off diff recorded |

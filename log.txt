@@ -1474,3 +1474,123 @@ branch=feature/agent
 repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
 worktree=main
 parent_agent=none
+
+## 2026-10-25T00:01:10Z SESSION START
+
+tool=Claude Code
+model=claude-opus-5-5
+Repo Root: /Users/rounakagrawal/hackerrank-orchestrate-october26
+Branch: feature/agent
+Worktree: main
+Parent Agent: none
+Language: py
+Time Remaining: not configured
+
+## [2026-10-25T00:13:33Z] T16 plan: measure L1/MA linkers read-only, propose M6 clock-safe only
+
+User Prompt (verbatim, secrets redacted):
+Read AGENTS.md, CLAUDE.md, docs/SPEC.md (especially L1, A8, A9, U1, U2, U7, O1, B1, TR1), docs/DESIGN.md (§11 T16 and the linking sections), docs/LINKING_EXPERIMENT.md, docs/SAMPLE_DERIVATION.md, docs/FAMILY_DISCOVERY.md, and the dossier, steps and diagnostics code. Plan T16 only: the account linker (L1), the analytics linker (MA), the LINK_FALLBACK setting (guess or omit) and the diagnostics events. Context: up to 264 deletion cases have steps but no account step because the account record has no identifier that links it; 30 analytics lookups in the trace logs and several service-export rows have a null identifier. Before proposing any rule, measure on data, read-only: (1) across the 32 samples, how many gold steps are account steps and analytics-without-identifier steps, and for each candidate rule (M6, M9 or a new one) how many of those gold steps it reproduces, how many extra steps it adds that are not in the gold, and what it does to precision and recall; (2) the same count of linked and unlinked cases across all 518 for guess versus omit, so I can see how many steps each choice adds; (3) for MA, how often exactly one candidate remains and how often there is a tie. Show a table for each. Rules I want kept: a guessed step is flagged low-confidence in diagnostics and never changes a case status; a guessed account step inside a COMPLETE case cites the Rule O capture if one exists, otherwise has an empty citation and logs guessed_account_uncited; MA links only when exactly one candidate remains and is omitted on ties; names never link alone; low-confidence links never become findings. Do not use the requested_at lower bound; that stays a T19 question. Test-first with small synthetic fixtures, then mutation checks on a throwaway copy that includes AGENTS.md and a passing baseline, never on the real dataset. Include tests that a wrong guess cannot change a status, that LINK_FALLBACK=omit removes every guessed step, and that two runs are byte-identical. Print the status mix and the adapters line before and after, and the before and after for all 32 samples. No LLM calls. Do not read .env. If a rule cannot be justified by the measurements, say so and propose omit instead of guessing. No commit until I say OK. Show the plan and wait.
+
+Agent Response Summary:
+Measured read-only with a scratchpad script (no LLM, GHOST_ENV_FILE pointed at a missing file, runs/out in the scratchpad). Samples: M6 7/7 correct, strict F1 0.8818 to 0.8851; the M6+M9+M7+widen chain is 12/19 with the M9 margin at 42 percent, strict F1 down to 0.8691; MX and MA (all variants) lower F1. Eval: 14 of 39 experiment-style M6 picks rely on another case's link dated after this case's audit_at (U3 breach); clock-safe M6 gives 24 picks, 24 steps, all COMPLETE ones cited by Rule O. Proposed M6 clock-safe only, MA diagnostics-only, omit for the rest. Plan mode blocked the log write during that turn, so this entry is appended now.
+
+Actions:
+* Read docs and code; wrote scratchpad t16_measure.py; ran baseline CLI on eval and the sample overlay; wrote the plan file
+
+Context:
+tool=Claude Code
+model=claude-opus-5-5
+branch=feature/agent
+repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
+worktree=main
+parent_agent=none
+
+## [2026-10-25T00:13:33Z] T16 plan approved with additions; log, then red tests
+
+User Prompt (verbatim, secrets redacted):
+Approved as planned, including M6 clock-safe only, MA diagnostics-only, LINK_FALLBACK=guess as the default, and keeping the Rule O citation rule. Two additions: (1) in SPEC L1, record M9, M7, widening, MX and MA as rejected, with their measured numbers (42 percent hit rate for M9, the 7/7 versus 12/19 sample picks, the 14 clock-unsafe picks), so we can defend the decision in the interview. (2) In the final report, print the linker line before and after in both modes, the per-sample before and after for all 32, the diff between guess and omit (it must be exactly the low-confidence steps), and the 24 picks with their citations. Log first, then write the red tests and show me the output. No commit until I say OK.
+[follow-up: go]
+
+Agent Response Summary:
+Appended the log entries first, then wrote the T16 tests (linker, policy guards, CLI guess/omit and determinism) against the unchanged code and ran them to show they fail. No implementation yet and no commit.
+
+Actions:
+* Appended log.txt; edited tests/fact_builder.py; added tests/test_linker.py and new tests in test_policy.py / test_cli_pipeline.py; ran the new tests
+
+Context:
+tool=Claude Code
+model=claude-opus-5-5
+branch=feature/agent
+repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
+worktree=main
+parent_agent=none
+
+## [2026-10-25T00:40:00Z] T16 implementation: linker, guessed account, policy guard, A1, CLI
+
+User Prompt (verbatim, secrets redacted):
+go andImplement until the new tests are green. Do not edit the new tests to make them pass. If you think a test is wrong, stop and show me which one and why. Then run the full suite, the mutation checks, and the full before and after report. No commit until I say OK.
+
+Agent Response Summary:
+Starting implementation (model switched to Sonnet 5.5 by the user for this turn). Order: ghost/linker.py, dossier.add_guessed_account, policy guard fixes (_status looks only at high-confidence entries; guessed account steps and events), invariants A1, CLI wiring with a full-file pool. New tests stay untouched.
+
+Actions:
+* (in progress) edits to ghost/linker.py, dossier.py, policy.py, invariants.py, cli.py
+
+Context:
+tool=Claude Code
+model=claude-sonnet-5-5
+branch=feature/agent
+repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
+worktree=main
+parent_agent=none
+
+## [2026-10-25T01:20:00Z] T16 implemented: M6 clock-safe linker, guessed account, policy guard, A1
+
+User Prompt (verbatim, secrets redacted):
+[same turn as the T16 implementation entry above: "go andImplement until the new tests are green ... run the full suite, the mutation checks, and the full before and after report. No commit until I say OK."]
+
+Agent Response Summary:
+Implemented ghost/linker.py (M6 only, clock-safe elimination; MA diagnostics only), dossier.add_guessed_account, policy changes (only high-confidence entries make a case verifiable; guessed_account_uncited / guessed_account_contradicted), invariant A1 and the CLI pool/linker line. The original new tests were not edited and all pass. Mutation run on a scratchpad copy: 27 of 36 killed first; 7 survivors were closed by new tests in tests/test_linker_gaps.py, 2 are equivalent mutants. Full suite 1110 OK; invariants PASS in both modes; two runs byte-identical. SPEC L1 amended with the rejected rules and numbers. Not committed.
+
+Actions:
+* Added ghost/linker.py, tests/test_linker_gaps.py; edited ghost/{dossier,policy,invariants,cli}.py, docs/{SPEC,DESIGN,LINKING_EXPERIMENT}.md
+* Ran full suite, CLI before/after in both modes on eval and the sample overlay (--no-llm, GHOST_ENV_FILE missing), scorer, invariants, cmp, mutate_t16.py on a throwaway copy with AGENTS.md
+
+Context:
+tool=Claude Code
+model=claude-sonnet-5-5
+branch=feature/agent
+repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
+worktree=main
+parent_agent=none
+
+## [2026-10-25T01:26:42Z] SESSION START
+
+tool=Claude Code
+model=claude-sonnet-5-5
+Repo Root: /Users/rounakagrawal/hackerrank-orchestrate-october26
+Branch: feature/agent
+Worktree: main
+Parent Agent: none
+Language: py
+Time Remaining: not configured
+
+## [2026-10-25T02:10:00Z] T16: commit-gate timeout 1200 s, LINK_FALLBACK default omit, commit
+
+User Prompt (verbatim, secrets redacted):
+Option 2 approved. Edit only the TEST_TIMEOUT constant in .claude/hooks/guard.py to 1200. Change nothing else in that file and show me the diff. Then continue with my earlier instruction in this order: change the LINK_FALLBACK default to omit as I described (config, .env.example, help text, SPEC L1, DESIGN, README if needed; the T16 tests that assume 24 picks must set the mode explicitly; add one test that the default emits no guessed step), run the suite, run the CLI on all 518 in default mode and show the linker line, the status mix and that the output equals the omit output from before. Then commit T16 with named files only, including .claude/hooks/guard.py, with this message: "T16: account linker (M6 clock-safe), analytics diagnostics, LINK_FALLBACK (default omit), invariant A1". Body: "Default is omit: no guessed steps. Guess mode is an opt-in switch (24 steps). No case changes status. Commit-gate timeout raised to 1200 s because the suite now takes about 10 minutes." Do not use git add . or -A. Show git log --oneline -3 and git status.
+
+Agent Response Summary:
+Changed only TEST_TIMEOUT (300 to 1200) in guard.py. Made omit the default (config.DEFAULT_LINK_FALLBACK, .env.example, --link-fallback help, SPEC L1, DESIGN, LINKING_EXPERIMENT, README); test_config's default assertion now expects omit; the filter test sets --link-fallback guess explicitly; added a test that the default run emits no guessed step and equals the omit output. Suite 1111 OK. Default CLI on 518: linker mode=omit picks=0, status mix C=155 I=353 NA=10, output and diagnostics byte-identical to the omit run and to the pre-T16 output. The user's .env was not read.
+
+Actions:
+* Edited .claude/hooks/guard.py, ghost/{config,cli}.py, .env.example, README.md, tests/{test_config,test_cli_pipeline}.py, docs/{SPEC,DESIGN,LINKING_EXPERIMENT}.md
+* Ran the full suite and the CLI in default mode (--no-llm, GHOST_ENV_FILE missing), cmp against omit and pre-T16 outputs; committed by file name
+
+Context:
+tool=Claude Code
+model=claude-sonnet-5-5
+branch=feature/agent
+repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
+worktree=main
+parent_agent=none

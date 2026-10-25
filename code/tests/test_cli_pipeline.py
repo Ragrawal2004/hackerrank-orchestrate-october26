@@ -15,7 +15,7 @@ from tests.helpers import DATASET, MAIN, tree_fingerprint
 NO_ENV_FILE = str(Path(tempfile.gettempdir()) / "ghost-tests-no-such-env-file")
 
 
-def run_cli(*args, runs_dir=None):
+def run_cli(*args, runs_dir=None, env=None):
     """Run the CLI with no .env; runs/ goes to a throwaway dir unless one is given."""
     with tempfile.TemporaryDirectory() as tmp:
         return subprocess.run(
@@ -23,7 +23,7 @@ def run_cli(*args, runs_dir=None):
             capture_output=True,
             text=True,
             env={"PATH": "/usr/bin:/bin", "GHOST_ENV_FILE": NO_ENV_FILE,
-                 "GHOST_RUNS_DIR": str(runs_dir or tmp)},
+                 "GHOST_RUNS_DIR": str(runs_dir or tmp), **(env or {})},
         )
 
 
@@ -193,6 +193,122 @@ class PipelineCliTests(unittest.TestCase):
     def test_invalid_flag_value_fails(self):
         p = run_cli("--link-fallback", "maybe")
         self.assertNotEqual(p.returncode, 0)
+
+
+class LinkFallbackCliTests(unittest.TestCase):
+    """T16: LINK_FALLBACK=guess adds only low-confidence account steps; omit adds none."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = tempfile.TemporaryDirectory()
+        d = Path(cls.tmp.name)
+        cls.runs, cls.rows, cls.events, cls.proc = {}, {}, {}, {}
+        for mode in ("guess", "omit"):
+            out, runs = d / f"{mode}.csv", d / f"runs_{mode}"
+            cls.proc[mode] = run_cli("--out", str(out), "--link-fallback", mode, runs_dir=runs)
+            cls.rows[mode] = ({r[0]: (r[1], json.loads(r[2])) for r in read_out(out)[1:]}
+                              if out.exists() else {})
+            cls.events[mode] = read_events(runs) if runs.exists() else []
+            cls.runs[mode] = (out, runs)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.tmp.cleanup()
+
+    def guesses(self, mode):
+        return {(e["case_id"], e["resource_id"]) for e in self.events[mode]
+                if e["event"] == "account_guess"}
+
+    def test_both_modes_exit_zero(self):
+        for mode in ("guess", "omit"):
+            self.assertEqual(self.proc[mode].returncode, 0, self.proc[mode].stderr)
+
+    def test_guess_is_m6_clock_safe_with_24_picks(self):
+        ev = [e for e in self.events["guess"] if e["event"] == "account_guess"]
+        self.assertEqual(len(ev), 24)
+        self.assertTrue(all(e["method"] == "M6" and e["confidence"] == "low" for e in ev))
+
+    def test_statuses_identical_in_both_modes(self):
+        self.assertTrue(self.rows["guess"])
+        self.assertEqual({c: v[0] for c, v in self.rows["guess"].items()},
+                         {c: v[0] for c, v in self.rows["omit"].items()})
+
+    def test_diff_is_exactly_the_low_confidence_steps(self):
+        def strip(s):
+            return {k: v for k, v in s.items() if k != "step_no"}
+        added = set()
+        for cid, (_, g_steps) in self.rows["guess"].items():
+            o = [strip(s) for s in self.rows["omit"][cid][1]]
+            g = [strip(s) for s in g_steps]
+            self.assertEqual([s for s in o if s not in g], [], cid)
+            for s in (s for s in g if s not in o):
+                self.assertEqual((s["phase"], s["operation"], s["system_id"]),
+                                 ("VERIFICATION", "VERIFY_RECORD_ABSENT", "account_service"), cid)
+                added.add((cid, s["resource_id"]))
+        self.assertTrue(added)
+        self.assertEqual(added, self.guesses("guess"))
+
+    def test_omit_has_no_guessed_step(self):
+        self.assertEqual(self.guesses("omit"), set())
+        unresolved = [e for e in self.events["omit"] if e["event"] == "link_unresolved"]
+        self.assertTrue(unresolved)
+        self.assertTrue(all(e["reason"] == "omit" for e in unresolved))
+
+    def test_default_mode_is_omit_and_emits_no_guessed_step(self):
+        """No flag and no LINK_FALLBACK env var: the default must not guess."""
+        with tempfile.TemporaryDirectory() as d:
+            out, runs = Path(d) / "o.csv", Path(d) / "runs"
+            p = run_cli("--out", str(out), runs_dir=runs)
+            self.assertEqual(p.returncode, 0, p.stderr)
+            self.assertRegex(p.stdout, r"linker: mode=omit picks=0 ")
+            self.assertEqual([e for e in read_events(runs) if e["event"] == "account_guess"], [])
+            self.assertEqual(out.read_bytes(), self.runs["omit"][0].read_bytes())
+
+    def test_linker_line_is_printed(self):
+        for mode in ("guess", "omit"):
+            self.assertRegex(self.proc[mode].stdout, rf"linker: mode={mode} picks=\d+ ")
+
+    def test_ma_candidates_are_withheld(self):
+        withheld = {(e["case_id"], e["resource_id"]) for e in self.events["guess"]
+                    if e["event"] == "analytics_candidate"}
+        self.assertTrue(withheld)
+        for cid, rid in withheld:
+            self.assertNotIn(rid, [s["resource_id"] for s in self.rows["guess"][cid][1]])
+
+    def test_invariants_pass_in_both_modes(self):
+        for mode in ("guess", "omit"):
+            out, runs = self.runs[mode]
+            res = invariants.check_file(out, DATASET / "deletion_requests.csv", DATASET,
+                                        runs / "diagnostics.jsonl")
+            self.assertEqual(res.violations, [], (mode, res.violations[:5]))
+            self.assertNotIn("every deletion case has an account step", " ".join(res.not_checked))
+
+    def test_two_runs_are_byte_identical_in_both_modes(self):
+        for mode in ("guess", "omit"):
+            out, runs = self.runs[mode]
+            with tempfile.TemporaryDirectory() as d:
+                again, runs2 = Path(d) / "o.csv", Path(d) / "runs"
+                run_cli("--out", str(again), "--link-fallback", mode, runs_dir=runs2)
+                self.assertEqual(again.read_bytes(), out.read_bytes(), mode)
+                self.assertEqual((runs2 / "diagnostics.jsonl").read_bytes(),
+                                 (runs / "diagnostics.jsonl").read_bytes(), mode)
+
+    def test_env_sets_the_mode_and_the_flag_overrides_it(self):
+        cid = sorted(self.guesses("guess"))[0][0]
+        with tempfile.TemporaryDirectory() as d:
+            a, b = Path(d) / "a.csv", Path(d) / "b.csv"
+            run_cli("--out", str(a), "--cases", cid, env={"LINK_FALLBACK": "omit"})
+            run_cli("--out", str(b), "--cases", cid, "--link-fallback", "guess",
+                    env={"LINK_FALLBACK": "omit"})
+            self.assertEqual(json.loads(read_out(a)[1][2]), self.rows["omit"][cid][1])
+            self.assertEqual(json.loads(read_out(b)[1][2]), self.rows["guess"][cid][1])
+
+    def test_cases_filter_does_not_change_a_guess(self):
+        for cid, _ in sorted(self.guesses("guess"))[:3]:
+            with tempfile.TemporaryDirectory() as d:
+                out = Path(d) / "o.csv"
+                run_cli("--out", str(out), "--cases", cid, "--link-fallback", "guess")
+                self.assertEqual(json.loads(read_out(out)[1][2]), self.rows["guess"][cid][1], cid)
 
 
 if __name__ == "__main__":

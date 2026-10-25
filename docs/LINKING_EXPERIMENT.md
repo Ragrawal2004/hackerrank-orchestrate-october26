@@ -66,3 +66,18 @@ Per held-out family:
   - **evaluation**: ~230 cases lose their `VERIFY_RECORD_ABSENT account_service …` step.
   M7 or M9 would recover more steps but add wrong steps (≈13–30 % error), which likely cost more than the omission under step-level scoring.
 - Open question for you: given the scoring, should ties be broken with M9 (higher recall, ~16 % wrong on held-out) instead of omitting the step? A wrong `resource_id` probably scores like a missing step plus an extra step.
+
+## T16 re-measurement (2026-10-25)
+The experiment's rules were re-run through the pipeline (scorer on the samples; strict step P / R / F1) and two defects in the plan were found. Full numbers are in SPEC L1.
+
+| Rule | picks (samples) | right | strict F1 (baseline .8818) |
+|---|---|---|---|
+| M6 | 7 | 7 | **.8851** |
+| M6 + M9 + M7 + widen | 19 | 12 | .8691 |
+| M6 + MX | 12 | 9 | .8725 |
+| MA / MA-anchor | 7 / 4 | 2 / 1 | .8725 / .8775 |
+
+- The M9 margin over M6 is 5 right of 12 (42%): below the break-even hit rate (about F1/2, 0.44) for an added step.
+- **Elimination must be clock-safe.** 14 of 39 evaluation M6 picks relied on a competing case's link that exists only after this case's `audit_at`. Rebuilding the competitor's dossier at this `audit_at` leaves 24 picks on the 508 deletion cases.
+- Mixing the sample and evaluation requests into one pool gives a wrong pick (case_31), so the pool is the run's request file only.
+- Decision: M6 clock-safe for accounts, available as the opt-in `LINK_FALLBACK=guess`; the default is `omit` (no guessed step). MA is diagnostics only.

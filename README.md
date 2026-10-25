@@ -166,4 +166,4 @@ python3 code/main.py --out /path/out.csv --cases case_33,case_34
 python3 -m unittest discover -s code/tests -t code -v   # run the tests
 ```
 
-Flags: `--dataset DIR`, `--out FILE`, `--cases IDS`, `--link-fallback guess|omit`, `--category-llm on|off`, `--no-llm`, `--cold`. Environment: `LINK_FALLBACK`, `CATEGORY_LLM`, `GHOST_INTENT_MODEL`, `GHOST_CATEGORY_MODEL`, `GHOST_SCREENSHOT_MODEL`, `ANTHROPIC_API_KEY`; CLI flags override env values. Rows are sorted by the numeric part of `case_id`. Right now the pipeline is a stub that marks every case `NOT_APPLICABLE`.
+Flags: `--dataset DIR`, `--out FILE`, `--cases IDS`, `--link-fallback guess|omit`, `--category-llm on|off`, `--no-llm`, `--cold`. Environment: `LINK_FALLBACK` (`omit` by default; `guess` opts in to low-confidence account steps), `CATEGORY_LLM`, `GHOST_INTENT_MODEL`, `GHOST_CATEGORY_MODEL`, `GHOST_SCREENSHOT_MODEL`, `ANTHROPIC_API_KEY`; CLI flags override env values. Rows are sorted by the numeric part of `case_id`. Right now the pipeline is a stub that marks every case `NOT_APPLICABLE`.

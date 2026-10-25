@@ -715,6 +715,54 @@ class RealDataTests(unittest.TestCase):
             self.assertEqual(ids(strict), ["P1", "P3"])
 
 
+class AccountStepTests(unittest.TestCase):
+    """A1 (T16): a deletion row with steps has an account step or a logged excuse."""
+
+    def no_account(self):
+        return row("case_4", "INCOMPLETE", [
+            S("FINDING", "REPORT_REMAINING_RECORD", "search_service", "search_1", "evidence_01"),
+            S("REMEDIATION", "DELETE_RECORD", "search_service", "search_1"),
+            S("VERIFICATION", "VERIFY_RECORD_ABSENT", "search_service", "search_1")])
+
+    def test_checked_only_when_diagnostics_are_given(self):
+        res = run(good_rows() + [self.no_account()])
+        self.assertEqual(res.violations, [])
+        self.assertTrue(any("account step" in i for i in res.not_checked), res.not_checked)
+
+    def test_listed_as_checked_when_diagnostics_are_given(self):
+        res = run(good_rows(), account_excused=set())
+        self.assertFalse(any("account step" in i for i in res.not_checked), res.not_checked)
+
+    def test_missing_account_step_is_a_violation(self):
+        res = run(good_rows() + [self.no_account()], account_excused=set())
+        self.assertEqual(ids(res), ["A1"])
+        self.assertEqual(cases(res, "A1"), ["case_4"])
+
+    def test_logged_excuse_allows_it(self):
+        res = run(good_rows() + [self.no_account()], account_excused={"case_4"})
+        self.assertEqual(res.violations, [])
+
+    def test_excuse_for_another_case_does_not_help(self):
+        res = run(good_rows() + [self.no_account()], account_excused={"case_9"})
+        self.assertEqual(ids(res), ["A1"])
+
+    def test_empty_and_not_applicable_rows_need_no_account_step(self):
+        empty = row("case_5", "INCOMPLETE", [])
+        res = run([good_na(), empty], account_excused=set(), no_steps={"case_5"})
+        self.assertEqual(res.violations, [])
+
+    def test_load_account_excused_reads_link_unresolved_and_unciteable_accounts(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d) / "diagnostics.jsonl"
+            p.write_text(
+                '{"case_id":"case_2","event":"link_unresolved","reason":"tie"}\n'
+                '{"case_id":"case_3","event":"unciteable","system_id":"account_service",'
+                '"resource_id":"account_1"}\n'
+                '{"case_id":"case_4","event":"unciteable","system_id":"search_service",'
+                '"resource_id":"search_1"}\n')
+            self.assertEqual(inv.load_account_excused(p), {"case_2", "case_3"})
+
+
 class MutationHelperIsolationTests(unittest.TestCase):
     def test_fixtures_are_not_shared_between_tests(self):
         a, b = good_rows(), good_rows()

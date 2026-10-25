@@ -6,7 +6,7 @@ from ghost import config
 class ConfigTests(unittest.TestCase):
     def test_defaults(self):
         cfg = config.build_config(environ={})
-        self.assertEqual(cfg.link_fallback, "guess")
+        self.assertEqual(cfg.link_fallback, "omit")
         self.assertEqual(cfg.category_llm, "off")
         self.assertFalse(cfg.no_llm)
         self.assertFalse(cfg.cold)

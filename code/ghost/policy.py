@@ -245,6 +245,7 @@ def _entry(resource, audit_at, rules, events):
          "observed": resource.get("state"), "verdict": "uncategorized", "finding": None,
          "evidence": (resource.get("citation") or {}).get("pick"),
          "confidence": (resource.get("link") or {}).get("confidence", "high")}
+    e["guess"] = e["confidence"] == "low" and resource.get("state_basis") == "l1_guess"
     e["category"], e["category_basis"] = categorize(resource, events)
     if e["category"] is None:
         return e
@@ -265,6 +266,9 @@ def _entry(resource, audit_at, rules, events):
     elif e["verdict"] == "violation":
         if e["confidence"] == "low":
             events.append({"type": "low_confidence_violation", **where, "finding": finding})
+            if e["guess"]:
+                events.append({"type": "guessed_account_contradicted", **where,
+                               "observed": e["observed"]})
         elif not e["evidence"]:
             events.append({"type": "unciteable_finding", **where, "finding": finding})
         else:
@@ -282,7 +286,8 @@ def _status(entries):
     unverified += [e for e in high if e["verdict"] == "violation"]
     if unverified:
         return "INCOMPLETE", "unverified_deletion"
-    if not any(e["verdict"] == "ok" and e["evidence"] for e in entries):
+    # only high-confidence entries can make a case verifiable: a guess never changes the status
+    if not any(e["verdict"] == "ok" and e["evidence"] for e in high):
         return "INCOMPLETE", "no_resources" if not entries else "nothing_verifiable"
     return "COMPLETE", None
 
@@ -301,9 +306,9 @@ def to_steps(entries, status):
                 out.append(st.make_step("REMEDIATION", sys, rid, rem))
             if e["verdict"] in ("ok", "violation"):
                 out.append(st.make_step("VERIFICATION", sys, rid, VERIFY_OP[e["required"]]))
-        elif status == "COMPLETE" and e["verdict"] == "ok" and e["evidence"]:
+        elif status == "COMPLETE" and e["verdict"] == "ok" and (e["evidence"] or e.get("guess")):
             out.append(st.make_step("VERIFICATION", sys, rid, VERIFY_OP[e["required"]],
-                                    e["evidence"]))
+                                    e["evidence"] or ""))
     return st.order_and_number(out)
 
 
@@ -317,6 +322,10 @@ def evaluate(dossier, rules):
     result = to_steps(entries, status) if reason is None else []
     if reason is not None:
         events.append({"type": "no_steps", "reason": reason})
+    elif status == "COMPLETE":
+        events.extend({"type": "guessed_account_uncited", "system_id": e["system_id"],
+                       "resource_id": e["resource_id"]}
+                      for e in entries if e.get("guess") and e["verdict"] == "ok" and not e["evidence"])
     missing = [{"system_id": e["system_id"], "resource_id": e["resource_id"],
                 "category": e["category"]}
                for e in entries if e["verdict"] == "missing" and e["category"] in RETAINED]

@@ -90,7 +90,8 @@ class Facts:
                              f"Data catalog linked {resource_id} ({resource_id}) to {email} and {user_id}.")
 
 
-def case(email, audit_at, case_id="case_t", requested_at="2026-09-01T00:00:00Z"):
+def case(email, audit_at, case_id="case_t", requested_at="2026-09-01T00:00:00Z",
+         reported_at=None):
     return {"case_id": case_id, "email": email, "requested_at": requested_at,
-            "reported_status": "COMPLETE", "reported_at": requested_at, "audit_at": audit_at,
-            "request_text": "Please delete my account."}
+            "reported_status": "COMPLETE", "reported_at": reported_at or requested_at,
+            "audit_at": audit_at, "request_text": "Please delete my account."}
