@@ -3,6 +3,7 @@
     python3 code/evaluation/main.py [--pred output.csv] [--gold dataset/sample_output.csv]
     python3 code/evaluation/main.py --invariants [--pred output.csv] [--requests <csv>]
         [--dataset dataset] [--diagnostics runs/diagnostics.jsonl] [--allow-stub]
+    python3 code/evaluation/main.py --custom [--keep DIR]   # the synthetic custom cases CC1-CC6
 """
 import argparse
 import sys
@@ -29,6 +30,13 @@ def run_invariants(args):
     return 1 if res.violations else 0
 
 
+def run_custom(args):
+    from evaluation.custom_cases import runner  # noqa: E402
+    res = runner.run(args.keep)
+    print(runner.format_result(res))
+    return 0 if res.ok else 1
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(description="Strict and relaxed scoring of output.csv vs gold")
     p.add_argument("--pred", type=Path, default=REPO_ROOT / "output.csv")
@@ -42,9 +50,14 @@ def main(argv=None):
     p.add_argument("--diagnostics", type=Path,
                    help="diagnostics.jsonl; its guessed_account_uncited events excuse uncited "
                         "steps and its no_steps events excuse INCOMPLETE [] rows")
+    p.add_argument("--custom", action="store_true",
+                   help="build the synthetic custom cases, run them through the CLI and score them")
+    p.add_argument("--keep", type=Path, help="with --custom: leave the generated dataset and output here")
     p.add_argument("--allow-stub", action="store_true",
                    help="accept deletion rows with [] (stub output); never use for the final run")
     args = p.parse_args(argv)
+    if args.custom:
+        return run_custom(args)
     if args.invariants:
         return run_invariants(args)
     try:

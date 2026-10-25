@@ -57,6 +57,11 @@ Counts are cases out of the 518 evaluation cases (E) and the 32 samples (S). Eac
 - #9, #10 and #18 are not covered by any sample, so only flipping the assumption could test them.
 - **Rows 24, 26 and 27 were not measured against gold:** #24 has no sample comparison. #26 and #27 come from the earlier T16 numbers.
 
+## Measured and rejected
+
+- **Activity-link time window (2026-10-25, analysis only; relates to rows #1, #2 and #22 and SPEC MM3 e).** A window on activity links changes **0 of 518** cases and only removes the 3 `object_19` steps from sample 07. It cannot reach the `tombstone_17` step (direct match from e42) or the `account_6523` step (trace link from e67). A general "evidence older than the request does not link" rule is rejected because the F-J screenshots are captured 26 h before `audit_at` by design. Samples 07 and 17 stay as known open regressions.
+- **Sample baseline after T17 (`--no-llm`, 32 samples).** `omit`: status 29/32 (.9062), step P/R/F1 .9684/.7927/.8718, sequence .3125. `guess`: .9062, .9688/.8031/.8782, .3438. The earlier T16 `omit` figure (F1 .8818, precision .9935) predates the T17 extras in cases 07 and 17.
+
 ## Open for T19
 
 - **#19 U6:** legal-hold steps are contradicted by sample gold. Change the assumption.

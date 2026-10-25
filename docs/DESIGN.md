@@ -209,12 +209,14 @@ For each linked resource:
    - **`retained_missing`**: the number of cases and records (A9), with case_ids;
    - **intent agreement**: LLM vs prefilter rate, with the case_ids that disagree;
    - analytics MA candidates withheld and ties/none unresolved, and `category_llm` overrides (when on).
-3. **Custom cases** (≥3; written to `code/evaluation/custom_cases.md` with inputs and expected outputs, and run as overlays: a temp copy of `dataset/` with added rows and files, via `--dataset <dir>`):
-   - **CC1 post-audit trap:** a bundle record stamped after `audit_at` shows the account present → the case stays COMPLETE and the late file is not cited.
-   - **CC2 historical email in a regional replica:** a ghost row in `eu_west` keyed by an old email → INCOMPLETE with `REPORT_REMAINING_RECORD` / `DELETE_RECORD` / `VERIFY_RECORD_ABSENT`, `system_id` logical.
-   - **CC3 deletion words in a non-deletion request:** "Please don't delete my account, just remove me from marketing lists" (plus a Spanish variant) → `NOT_APPLICABLE`, `[]`.
-   - **CC4 tombstone leak:** a tombstone keeps `subject_reference` but its phone is still set → `REPORT_EXPOSED_PII` / `REDACT_RECORD` / `VERIFY_RECORD_REDACTED`, never DELETE.
-   - **CC5 legal hold plus an active connector:** the legal-hold record must get `VERIFY_RECORD_PRESENT`; the connector gets disable-before-delete ordering.
+3. **Custom cases (T18)**: `code/evaluation/custom_cases/` generates a **self-contained synthetic dataset** (users, audit log, activity, rules, manifest, evidence, requests) plus hand-written expected answers, and `python3 code/evaluation/main.py --custom` runs it through the real CLI (`--dataset <dir> --no-llm`, no `.env`, throwaway `runs/`) and scores it with `scoring.py` (strict) and the invariant checker. It does not copy `dataset/` (which is not in `code.zip`), so the cases run from the zip alone. Expected steps are literals derived from AGENTS.md §6 before the first run, never pipeline output. Six scenarios, eight rows, each with a negative control (the decisive line removed must give the other answer):
+   - **CC1** a failed read that looks like absence (`rows=0 http_status=503` after a real read, a `_failed` event, a "deletion SUCCESS" claim, request under the old email) → INCOMPLETE;
+   - **CC2a/CC2b** one trace naming two subjects (A8): A is COMPLETE with no step for B's record, B is INCOMPLETE;
+   - **CC3a/CC3b** evidence captured after `audit_at` (U3 clock gate): COMPLETE citing only the earlier file, then the same user at a later `audit_at` INCOMPLETE citing the bundle;
+   - **CC4** a resource that is present again in a *later record* held by an *earlier-manifest file* (recreation established by evidence; activity-only recreation is not scored, see the report);
+   - **CC5** a retained audit record inside `retention_until` (`VERIFY_RECORD_PRESENT`, never deleted) with an active connector that must be disabled before the deletes;
+   - **CC6** deletion words in a non-deletion request → `NOT_APPLICABLE`, `[]`.
+   Results go to `code/evaluation/evaluation_report.md` (hand-written; there is no report generator). Tests: `code/tests/test_custom_cases.py`.
 4. **Uncovered-family spot checks:** for each family with no sample (F-A regional/reporting/data-failover, F-B1, F-B3, F-B4, F-C2, F-C3, F-D2, F-D3, F-D4, F-E syntaxes, F-F, F-G, F-J, F-K), derive one case by hand in the style of SAMPLE_DERIVATION and record the expected steps in `code/evaluation/family_checks.md`. The evaluation script diffs them. These are our own derivations, not gold.
 
 ## 9. Code layout
@@ -233,7 +235,7 @@ code/ghost/policy.py          category, rule, compliance, status
 code/ghost/steps.py           templates, citations, ordering, serialization
 code/ghost/diagnostics.py
 code/prompts/intent.md, screenshot.md, category.md
-code/evaluation/main.py, usage_report.py, custom_cases.md, family_checks.md, evaluation_report.md, usage_report.md
+code/evaluation/main.py (--custom), usage_report.py, custom_cases/ (render, cases, build, runner), family_checks.md, evaluation_report.md, usage_report.md
 ```
 
 ## 10. Risks
@@ -277,7 +279,7 @@ code/evaluation/main.py, usage_report.py, custom_cases.md, family_checks.md, eva
 | T15 | Adapter 7: ledgers (JSON / log / text) | Samples 11, 13, 14 match except L1 steps (done, see SPEC LG1) |
 | T16 | L1 account linker (M6, clock-safe) + MA analytics diagnostics + `LINK_FALLBACK` + diagnostics events (done, see SPEC L1) | M6 7/7 on the samples; 24 guessed steps on the 518; `omit` removes every guessed step; a guess never changes a status |
 | T17 | Adapter 8: PDF + screenshot extraction (prompt in `code/prompts/screenshot.md`); gateway image input and hard caps (code done, real run pending approval; see SPEC MM1/MM2) | Sample 07 matches; F-J cases produce steps or a logged reason; 06 and 08 wait for the deferred text files |
-| T18 | Custom cases CC1–CC5 + overlay runner | All 5 pass |
+| T18 | Custom cases CC1–CC6 (8 rows) + `--custom` runner + hand-written `evaluation_report.md` (done) | All 8 rows match strictly; negative controls flip as designed |
 | T19 | Uncovered-family spot checks + fixes; optional §4.1 category LLM (`CATEGORY_LLM`, prompt `code/prompts/category.md`), evaluated on/off | `family_checks.md` diffs are clean or explained; on/off diff recorded |
 | T20 | Full cold run; `evaluation_report.md`, `usage_report.md`, final README; `code.zip` dry-run listing | 518 rows, invariants green, reports written, zip has no dataset/venv/nested archives |
 
