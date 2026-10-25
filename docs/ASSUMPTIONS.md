@@ -68,3 +68,29 @@ Counts are cases out of the 518 evaluation cases (E) and the 32 samples (S). Eac
 - **#9 I2:** `support_records` as SUPPORT_MESSAGE flips the status of case_297 and has no sample support.
 - **#24:** 120 unciteable cases, not measured against gold.
 - **#4:** check the negation override (cases 533–542) after the final LLM run.
+
+## T19 item 1: case_126 and case_179 (2026-10-25, measured at `feature/agent`, `--no-llm`, `omit`)
+
+**case_126** (`audit_at` 2026-08-17T10:00:00Z): `[]` is correct, no code change. The violation (`account_service/account_8819`, user_124, PRESENT) is proven only by **evidence_12** (`customer_data_snapshot_bundle_20260819.json`): inner snapshot 2026-08-11T10:00:00Z (state clock usable), manifest 2026-08-19T10:00:00Z (after `audit_at`, so not citable). No other file names `account_8819`. `activity_3114` (2026-08-05, DELETE_RECORD, FAILED) is a claim and does not prove presence. The e12 `account_service` snapshots at 08-17T10:00 and 08-19 hold other users (`account_6673`, `account_6805`); with `complete=0` (B1) they prove nothing about `account_8819`. The retained `audit_record_6884` is cited by evidence_87 (manifest 2026-08-17T09:42:50Z). Pinned by `code/tests/test_t19_unciteable_cases.py`.
+
+**case_179** (`audit_at` 2026-07-23T12:00:00Z): not a later-only case. `audit_record_919` (retained, user_177) is proven only by evidence_17 (manifest 2026-07-25T15:00:00Z, late), which is fine. `support_platform/support_2283` is PRESENT per evidence_17 (inner 07-23T12:00:00Z, late), but **evidence_84** (`customer_data_inventory_20260723.sql`, manifest 2026-07-23T11:43:30Z, citable) also names it as a `support_records` row with the subject's email (`updated_at` 2026-07-23T09:25:20Z). Rule E does not pick it because e84's state is IDENTIFIABLE (I2) and the winning state is PRESENT. SPEC U3 says "cites the best qualifying file".
+
+**Measured, not adopted (decision 2026-10-25: Rule E stays as is): relaxed Rule E** (`dossier._resolve`, `agree`). Variant A: a PRESENT winner also accepts an IDENTIFIABLE citable file. Variant B: any citable file that names the resource. Both give identical results.
+
+| | 32 samples | 518 evaluation cases |
+|---|---|---|
+| Cases changed | 0 | 8 (71, 119, 131, 179, 227, 275, 431, 527) |
+| Status changes | 0 | 0 |
+| Steps added / removed | 0 / 0 | 18 / 0 (2 each, case_179 gains 4) |
+| Status accuracy | .9062 → .9062 | n/a |
+| Step P / R / F1 | .9684 / .7927 / .8718 → unchanged | n/a |
+
+All 8 new findings are `REPORT_REMAINING_RECORD` on a `support_platform` resource cited to an inventory `support_records` row (evidence_93, 88, 87, 84, 80, 77, 68, 62). They depend on I2 (`support_records` is a SUPPORT_MESSAGE) being right while the same resource is treated as a SUPPORT_ATTACHMENT (delete) by the later observation. No sample covers it, so the samples cannot confirm or reject it. The change depends on the open assumption I2 and has 0 sample effect, so it is not adopted.
+
+## T19 item 2: case_311 BadResponse (2026-10-25)
+
+The failure was the intent classifier's Haiku call (`runs/usage.jsonl`, 2026-10-24T15:08:34Z, 481 in / 52 out tokens, `error=BadResponse`), not a pipeline crash: `intent._classify` falls back to the prefilter (case_311 is DELETION) and the row has real steps. The exact reply is unrecoverable (replies that fail validation were never stored, the per-run diagnostics were overwritten). From now on a bad reply logs only its failure class (`bad_response_kind`, `JSONDecodeError` or `SchemaError`) and the `LLMUnavailable` message no longer carries reply text. Pinned by `test_llm` and `test_intent` (3 mutations fail them).
+
+## T19 item 3: U6 legal-hold steps, still open (2026-10-25)
+
+None of the 32 samples has a `LEGAL_HOLD_RECORD` resource: the sample gold has no `legal_service` step and the baseline sample run's diagnostics mention no `legal_hold_*` or `LEGAL_HOLD_RECORD`. The samples therefore cannot confirm or reject the rule, so nothing was changed. The 8 affected cases are evaluation cases (220, 261, 390, 432, 460, 473, 505, 511), where dropping the steps changes no status. Row 19 stays "open", not "contradicted".

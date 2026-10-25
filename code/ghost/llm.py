@@ -189,7 +189,7 @@ def _cache_write(st, key, text):
 
 
 def _log_usage(st, purpose, model, case_id, input_tokens, output_tokens, cache_hit, error,
-               variant=None, image_count=0):
+               variant=None, image_count=0, bad_response_kind=None):
     line = {
         "ts": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "purpose": purpose, "model": model, "case_id": case_id,
@@ -200,6 +200,8 @@ def _log_usage(st, purpose, model, case_id, input_tokens, output_tokens, cache_h
     }
     if variant is not None or image_count:
         line["variant"], line["image_count"] = variant, image_count
+    if bad_response_kind:  # the class of the failure only: a rejected reply may echo personal data
+        line["bad_response_kind"] = bad_response_kind
     st["runs_dir"].mkdir(parents=True, exist_ok=True)
     with _lock, open(st["runs_dir"] / "usage.jsonl", "a", encoding="utf-8") as f:
         f.write(json.dumps(line, ensure_ascii=False) + "\n")
@@ -317,8 +319,10 @@ def call(purpose, model, prompt, case_id, schema_, images=(), variant=None, max_
             schema.validate(obj, schema_)
         except ValueError as exc:  # JSONDecodeError and SchemaError are both ValueErrors
             # The call cost tokens even though the answer is unusable, so log them.
-            _log_usage(st, purpose, model, case_id, in_tok, out_tok, False, "BadResponse", **extra)
-            raise LLMUnavailable(f"bad response: {redact(exc)}") from None
+            kind = type(exc).__name__
+            _log_usage(st, purpose, model, case_id, in_tok, out_tok, False, "BadResponse",
+                       bad_response_kind=kind, **extra)
+            raise LLMUnavailable(f"bad response ({kind})") from None
         _log_usage(st, purpose, model, case_id, in_tok, out_tok, False, None, **extra)
         _cache_write(st, key, text)
         return obj

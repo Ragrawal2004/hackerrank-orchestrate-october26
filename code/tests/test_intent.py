@@ -206,6 +206,23 @@ class ClassifyTests(Base):
                 self.assertIsNone(r["llm"])
         self.assertEqual(self.events("intent_disagreement"), [])
 
+    def test_bad_reply_falls_back_with_kind_only_and_invents_nothing(self):
+        # T19 item 2 (case_311): prose around JSON, an unknown key, a wrong enum value.
+        marker = "REPLY-MARKER-4471"
+        replies = [f"Here you go: {dnd('NON_DELETION', marker)}",
+                   json.dumps({"intent": "DELETION", "reason": "r", marker: 1}),
+                   json.dumps({"intent": marker, "reason": "r"})]
+        for reply in replies:
+            t = FakeTransport((reply, 481, 52))
+            self.configure(t)
+            r = intent.classify(self.case("Please delete my account."), "m-1", True, self.runs)
+            self.assertEqual((r["label"], r["source"], r["llm"]), ("DELETION", "prefilter", None))
+            self.assertEqual(len(t.calls), 1)  # no retry on a bad reply
+            (ev,) = self.events("intent_fallback")
+            self.assertRegex(ev["error"], r"bad response \((JSONDecodeError|SchemaError)\)")
+            self.assertNotIn(marker, json.dumps(ev))
+            (self.runs / "diagnostics.jsonl").unlink()
+
     def test_no_key_falls_back_without_a_network_call(self):
         t = FakeTransport((dnd("DELETION"), 1, 1))
         self.configure(t)  # a transport is wired in, so only the intent code can stop the call

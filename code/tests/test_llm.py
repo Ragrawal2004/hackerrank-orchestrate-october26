@@ -259,6 +259,23 @@ class UsageTests(Base):
         self.assertEqual(u["error"], "BadResponse")
         self.assertFalse(u["cache_hit"])
 
+    def test_bad_response_logs_the_failure_kind_and_never_the_reply(self):
+        # T19 item 2: a rejected reply may echo personal data, so only its kind is recorded.
+        marker = "REPLY-MARKER-4471"
+        replies = {
+            "JSONDecodeError": f"Sure! {marker} {{not json",
+            "SchemaError": json.dumps({"intent": marker}),  # wrong type of value echoed by the validator
+        }
+        for kind, text in replies.items():
+            self.configure(FakeTransport((text, 11, 7)))
+            with self.assertRaises(llm.LLMUnavailable) as cm:
+                self.call()
+            self.assertIn(kind, str(cm.exception))
+            self.assertNotIn(marker, str(cm.exception))
+            u = self.usage()[-1]
+            self.assertEqual((u["error"], u["bad_response_kind"]), ("BadResponse", kind))
+            self.assertNotIn(marker, json.dumps(u))
+
     def test_no_response_logs_zero_tokens_and_the_class_name_only(self):
         self.configure(FakeTransport(llm.Permanent("secret-detail-xyz", kind="AuthenticationError")))
         with self.assertRaises(llm.LLMUnavailable):
