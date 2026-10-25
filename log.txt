@@ -2043,3 +2043,101 @@ branch=feature/agent
 repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
 worktree=main
 parent_agent=none
+
+## [2026-10-25T08:20:33Z] T19b plan: COMPLETE for no_resources cases (read-only analysis)
+
+User Prompt (verbatim, secrets redacted):
+New task T19b, time-boxed to 14:40 IST, no real LLM calls needed (cache warm). Evidence: AGENTS.md line 302 says INCOMPLETE needs a violation supported by participant-visible evidence; problem_statement line 24 defines COMPLETE; sample gold for cases 01, 02, 04 is COMPLETE with no found evidence of any violation, but we output INCOMPLETE with [] (diagnostics no_steps reason=no_resources). Rule to implement, narrow: when a deletion case ends with no steps because reason=no_resources (nothing found for the user at all) AND there is no unciteable/late-only violation for it (cases 126 and 179 must stay INCOMPLETE []), the status is COMPLETE with steps []. All other no_steps cases unchanged. Do: (1) show me first, in a short plan: which of the 518 cases have no_steps today, the reason for each, which would change, and sample before/after. (2) Test first, including 126/179 staying INCOMPLETE and a control. (3) Mutation check. (4) Rerun the 32 samples (--no-llm, omit) and report status accuracy and F1 before/after (expect 32/32 and F1 not lower). (5) Rerun the final 518 with the capped wrapper (cache warm), compare to the committed output.csv: list every changed row. (6) Update ASSUMPTIONS.md (the no_steps row), SPEC, evaluation_report.md numbers, log.txt. No commit until I say OK. Paste the plan first and wait.
+
+Agent Response Summary:
+Read-only analysis from the final-run and sample diagnostics: the 518 have 5 no_steps cases and none has reason no_resources; the 6 sample no_resources cases are 01, 02, 04 (gold COMPLETE) and 06, 08, 10 (gold INCOMPLETE). Presented a plan and waited for approval.
+
+Actions:
+* read-only analysis of scratchpad diagnostics and evidence files; appended this entry
+
+Context:
+tool=Claude Code
+model=claude-sonnet-5-5
+branch=feature/agent
+repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
+worktree=main
+parent_agent=none
+
+## [2026-10-25T08:23:58Z] T19b decision: docs only, rule not implemented
+
+User Prompt (verbatim, secrets redacted):
+Decision: do NOT implement the T19b rule. Docs only: add the finding to docs/ASSUMPTIONS.md (rows #23 and no_steps) and docs/SPEC.md as "measured, not implemented": reason no_resources occurs only in 6 samples (01,02,04 gold COMPLETE; 06,08,10 gold INCOMPLETE because of unread files e57,e59,e61), 0 of 518 cases affected, narrow rule would give 32/32 on samples with F1 unchanged .8718, rests on 3 samples. Add a one-line note to evaluation_report.md section 4 (failures found). Append log.txt. Do NOT commit yet; I will batch this docs change with the next commit. Show git status --short and git diff --stat.
+
+Agent Response Summary:
+Edited ASSUMPTIONS.md (row 23 plus a T19b section), SPEC.md (decision row NS1) and evaluation_report.md section 4. No code changed, nothing committed.
+
+Actions:
+* edited docs/ASSUMPTIONS.md, docs/SPEC.md, code/evaluation/evaluation_report.md; appended this entry
+
+Context:
+tool=Claude Code
+model=claude-sonnet-5-5
+branch=feature/agent
+repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
+worktree=main
+parent_agent=none
+
+## [2026-10-25T00:00:00Z] T19b recorded as measured, not implemented (docs only)
+
+User Prompt (verbatim, secrets redacted):
+Decision: do NOT implement the T19b rule. Docs only: add the finding to docs/ASSUMPTIONS.md (rows #23 and no_steps) and docs/SPEC.md as "measured, not implemented": reason no_resources occurs only in 6 samples (01,02,04 gold COMPLETE; 06,08,10 gold INCOMPLETE because of unread files e57,e59,e61), 0 of 518 cases affected, narrow rule would give 32/32 on samples with F1 unchanged .8718, rests on 3 samples. Add a one-line note to evaluation_report.md section 4 (failures found). Append log.txt. Do NOT commit yet; I will batch this docs change with the next commit. Show git status --short and git diff --stat.
+(followed by: "continue what were u doign before this prompt")
+
+Agent Response Summary:
+Recorded the T19b finding as measured, not implemented in ASSUMPTIONS row 23 and its summary line, SPEC (new row T19b) and evaluation_report section 4. No code changed and nothing committed. The read-only 32-sample audit (scratchpad tools/audit.py) continues after this.
+
+Actions:
+* edited docs/ASSUMPTIONS.md, docs/SPEC.md, code/evaluation/evaluation_report.md
+* appended this entry to log.txt
+* ran git status --short and git diff --stat
+
+Context:
+tool=Claude Code
+model=claude-sonnet-5-5
+branch=feature/agent
+repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
+worktree=main
+parent_agent=none
+
+## [2026-10-25T08:38:34Z] T20b step 1: commit prep for the docs batch
+
+User Prompt (verbatim, secrets redacted):
+Task T20b, packaging. Time-box 45 minutes. No commit of zip files; commit only the docs batch (the 4 uncommitted docs files) when I say OK. Never print .env. dataset/ read-only. No LLM calls. 1. Commit prep: show git status --short. Wait for my OK. 2. Build code.zip in the scratchpad from tracked files only ... 3. Safety scan ... 4. Unzip into a new empty directory outside the repo and dry run ... 5. agent-trace.zip following agent_trace_instructions.md ... 6. Copy the final deliverables into ~/Desktop/orchestrate_submission/. Report facts only, and stop at any failed check.
+
+Agent Response Summary:
+Did step 1 only: showed git status (4 modified files: evaluation_report.md, ASSUMPTIONS.md, SPEC.md, log.txt) and read agent_trace_instructions.md. Waiting for the user's OK before anything else.
+
+Actions:
+* git status --short, git diff --stat, read agent_trace_instructions.md; appended this entry
+
+Context:
+tool=Claude Code
+model=claude-sonnet-5-5
+branch=feature/agent
+repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
+worktree=main
+parent_agent=none
+
+## [2026-10-25T08:45:08Z] T20b: commit docs batch, backup, then packaging
+
+User Prompt (verbatim, secrets redacted):
+OK. Commit the docs batch on feature/agent. Stage ONLY these named paths (no git add . / -A): code/evaluation/evaluation_report.md, docs/ASSUMPTIONS.md, docs/SPEC.md, log.txt. Confirm no .pyc, runs/, dataset/ or zip files are staged. Message: "docs: T19b measured-not-implemented finding, evaluation report note" with a short body. End with the Co-Authored-By and Claude-Session lines. Then run ~/orchestrate-backup/backup.sh, show git log --oneline -3, and continue with steps 2 to 6 of T20b. Important: build code.zip AFTER this commit so it contains the final docs and log.txt.
+
+Agent Response Summary:
+Staged the four named paths, committed, ran the backup, then started packaging (code.zip from the committed tree, safety scan, dry run, agent-trace.zip, submission folder).
+
+Actions:
+* git add (named paths), git commit, ~/orchestrate-backup/backup.sh
+
+Context:
+tool=Claude Code
+model=claude-sonnet-5-5
+branch=feature/agent
+repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
+worktree=main
+parent_agent=none

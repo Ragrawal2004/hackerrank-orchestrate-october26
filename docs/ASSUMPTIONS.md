@@ -32,7 +32,7 @@ Counts are cases out of the 518 evaluation cases (E) and the 32 samples (S). Eac
 | 20 | Absence by omission from a complete dump | Rule O, dossier | 9 | Status | S 1 (case_17) where gold has no step. Samples 01, 02, 04 support the citation. |
 | 21 | Tombstone treatment | `policy` | 9 | Status | S 3 (17, 31, 32), same as gold. |
 | 22 | `state_unknown`, so no step | `policy` | 4 (39, 46, 61, 63) | Status (these end up INCOMPLETE `[]`) | S 2 (07, 17), same as gold. |
-| 23 | `no_steps`: INCOMPLETE with `[]` | `policy._status` | 9 (39, 45, 50, 53, 55, 61, 63, 126, 179) | **Status** | **Wrong in 3 of 7 samples.** Gold says COMPLETE for 01, 02, 04. |
+| 23 | `no_steps`: INCOMPLETE with `[]` | `policy._status` | 9 (39, 45, 50, 53, 55, 61, 63, 126, 179) | **Status** | **Wrong in 3 of 7 samples.** Gold says COMPLETE for 01, 02, 04. **T19b (measured, not implemented, 2026-10-25):** reason `no_resources` occurs only in 6 samples (01, 02, 04 gold COMPLETE; 06, 08, 10 gold INCOMPLETE because the files e57, e59, e61 are unread) and in 0 of the 518 cases. A narrow rule (`no_resources` and no unciteable or late-only violation, so 126 and 179 stay INCOMPLETE `[]`) would give 32/32 status on the samples with step F1 unchanged at .8718, but it rests on 3 samples and changes nothing on the 518. Decision: not implemented. |
 | 24 | Unciteable evidence, so no step | `policy` | 120 cases (130 events) | Step-only, apart from 1 case that is COMPLETE | Not measured. |
 | 25 | Rule O picks the latest capture when several qualify | citation rule | 58 (43 INCOMPLETE, 15 COMPLETE) | Step-only (citation) | Contradicted in case_04: gold cites e54, not the later e90. |
 | 26 | L1: no account step by default (`omit`) | `linker`, `LINK_FALLBACK` | 272 get no account step | Step-only | Gold has an account step in all 32 samples. Guess mode scored 7 of 7 on the samples. |
@@ -46,7 +46,7 @@ Counts are cases out of the 518 evaluation cases (E) and the 32 samples (S). Eac
   - **#9, I2:** case_297 flips on it.
   - **#4:** the negation override covers 533–542.
   - **#1/#2:** the prefix and system fallbacks, which flip 3 cases.
-  - **#23:** `no_steps` is already wrong on 3 samples.
+  - **#23:** `no_steps` is already wrong on 3 samples; the T19b fix was measured and not implemented (0 of 518 cases affected, 3-sample basis).
 - **Step-only and untestable:** #10, #11, #12, #16 and #18.
 - **Dead branches:** #6 (U7), #3, #8, #11, #17 and #28 affect 0 cases.
 

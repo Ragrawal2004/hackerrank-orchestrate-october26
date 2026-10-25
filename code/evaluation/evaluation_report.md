@@ -89,6 +89,8 @@ Known, open, and all reproducible from the commands above.
 | F5 | Samples 18, 20: account and `audit_record_*` steps missing | The ids appear in no participant file | Accepted loss (SPEC A3/A4) |
 | F6 | 19 account steps missing (one in each of 19 cases; 13 of those cases also have another cause, 6 are account-only) and 7 analytics `VERIFY` steps missing | L1 `omit` and MA diagnostics-only, chosen because guessed steps cannot be verified on the 518 | Decision recorded. `guess` mode makes 7 picks, all right, but only 2 add a scored step (cases 07 and 30), because the other 5 sit in `no_steps` or deferred-file cases; F1 .8718 → .8782 |
 
+**Measured, not implemented: F1 fix (T19b, 2026-10-25).** Making `no_resources` cases COMPLETE `[]` would give 32/32 status on the samples with step F1 unchanged at .8718, but `no_resources` occurs only in 6 samples (01, 02, 04, 06, 08, 10) and in 0 of the 518 cases, and the rule rests on 3 samples; see assumption row 23 and SPEC T19b.
+
 **Measured and rejected fix for F2/F3 (2026-10-25).** An activity-link time window changes **0 of 518** cases and only removes the 3 `object_19` steps. It cannot reach `tombstone_17` or `account_6523`. A general "evidence older than the request does not link" rule is rejected, because the F-J screenshots are captured 26 hours before `audit_at` by design. Samples 07 and 17 stay as known open regressions.
 
 ## 5. Improvements made, with the measurement behind each
