@@ -2141,3 +2141,60 @@ branch=feature/agent
 repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
 worktree=main
 parent_agent=none
+
+## [2026-10-25T08:45:37Z] T20b stopped at step 2: README has no approach overview
+
+User Prompt (verbatim, secrets redacted):
+(Same T20b instruction as the previous entry: commit the docs batch, backup, then steps 2 to 6; build code.zip AFTER the commit; stop at any failed check.)
+
+Agent Response Summary:
+Committed the docs batch as 1e80eb0 and ran the backup. Built code.zip from HEAD with git archive (135 entries, 355032 bytes, no excluded paths). Step 2 check failed: README.md is at the zip root and covers install, env var names, output.csv, tests and evaluation, but has no approach overview (adapters, two clocks, LLM only for intent and images). Stopped as instructed.
+
+Actions:
+* git commit 1e80eb0, backup.sh, git archive to the scratchpad, README grep
+
+Context:
+tool=Claude Code
+model=claude-sonnet-5-5
+branch=feature/agent
+repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
+worktree=main
+parent_agent=none
+
+## [2026-10-25T08:50:12Z] T20b: README Approach section
+
+User Prompt (verbatim, secrets redacted):
+Yes. Add an "Approach" section to README.md (about 30 to 40 lines, plain language, facts only from the docs and measured results, no marketing). Cover: 1. pipeline in order (request, intent check with word prefilter + Haiku and negation override, 8 evidence adapters detecting by structure, state at audit_at, two-clock rule, identifier linking, deletion_rules.csv policy, status, steps with evidence ids, invariant checks); 2. LLM use only intent (Haiku) and screenshots/PDFs (Opus, committed extractions, hashes only), never decides status, links, steps or evidence; caching, caps, fallback; 3. principle evidence beats assumption; 4. measured results (29/32, .968/.793/.872, custom 8/8, 152/356/10, byte-identical reruns, $0.028); 5. known gaps with pointers to docs/ASSUMPTIONS.md. Then append the log.txt entry, show git status --short and git diff --stat, and wait for my OK before committing (README.md and log.txt only). After the commit, rebuild code.zip and continue steps 3 to 6 of T20b.
+
+Agent Response Summary:
+Appended an Approach section to README.md covering the five requested topics with numbers taken from the evaluation report and the final run. Nothing committed; waiting for approval.
+
+Actions:
+* appended to README.md; appended this entry to log.txt
+
+Context:
+tool=Claude Code
+model=claude-sonnet-5-5
+branch=feature/agent
+repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
+worktree=main
+parent_agent=none
+
+## [2026-10-25T08:51:46Z] T20b: ARCHITECTURE.md, commit README and architecture
+
+User Prompt (verbatim, secrets redacted):
+OK. Also create ARCHITECTURE.md at the repo root (about 60 to 80 lines, facts from docs/DESIGN.md and the code only, no new claims): pipeline diagram, module map, data flow, two clocks with Rule E/Rule O, LLM gateway, determinism and invariants, where to look. Append the log.txt entry. Then show git status --short: if it shows EXACTLY README.md, ARCHITECTURE.md and log.txt, commit those three named paths (no git add . / -A), no .pyc/runs/dataset/zip staged, message "docs: README approach section, ARCHITECTURE.md" with a short body and the two trailer lines. Then run ~/orchestrate-backup/backup.sh, show git log --oneline -3, rebuild code.zip from the new commit (tracked files only, same exclusions, ARCHITECTURE.md at the zip root) and continue T20b steps 3 to 6. If git status shows any other file, stop and tell me.
+
+Agent Response Summary:
+Wrote ARCHITECTURE.md from DESIGN.md and the code, appended this entry, checked git status, committed the three named paths, ran the backup and rebuilt code.zip.
+
+Actions:
+* wrote ARCHITECTURE.md; appended log.txt; git status, add, commit; backup.sh; git archive
+
+Context:
+tool=Claude Code
+model=claude-sonnet-5-5
+branch=feature/agent
+repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
+worktree=main
+parent_agent=none

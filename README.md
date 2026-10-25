@@ -180,3 +180,30 @@ To score the samples, run the pipeline on a dataset folder whose `deletion_reque
 **Environment variables** (names only; CLI flags override them): `ANTHROPIC_API_KEY`, `LINK_FALLBACK` (`omit` by default; `guess` opts in to low-confidence account steps), `CATEGORY_LLM` (`off` by default), `GHOST_INTENT_MODEL`, `GHOST_CATEGORY_MODEL`, `GHOST_SCREENSHOT_MODEL`, `GHOST_RUNS_DIR` (diagnostics, usage log and response cache; default `runs/`), `GHOST_EXTRACTIONS_DIR`.
 
 Screenshots and PDFs are read from the committed `code/extractions/` (agreed facts, ids and hashes only), so a run makes no image calls. Per-run diagnostics go to `runs/diagnostics.jsonl` and LLM usage to `runs/usage.jsonl`. Design and decisions are in `docs/` (`SPEC.md`, `DESIGN.md`, `ASSUMPTIONS.md`); results are in `code/evaluation/evaluation_report.md` and `code/evaluation/usage_report.md`.
+
+## Approach
+
+**Pipeline, in order.** For each request:
+1. **Intent.** A word prefilter looks for explicit "do not delete" clauses; a Haiku classifier reads the text too. A prefilter negation overrides the model, otherwise the model wins, and a bad or missing reply falls back to the prefilter label. A non-deletion request is `NOT_APPLICABLE` with `[]`.
+2. **Evidence adapters.** Eight adapters turn the evidence files (SQL snapshots, JSON bundles and exports, six log syntaxes, ledgers, screenshots, PDFs) into one table of observations. A file is recognised by its structure, never by its name. A file no adapter claims is reported as unclaimed.
+3. **State at `audit_at`.** The latest usable observation of each resource decides its state. Activity logs and the reported status are claims, not proof.
+4. **Two clocks.** A record's own timestamp decides whether it may be used for linking and state. The file's manifest capture time decides only whether it may be cited. Nothing dated after `audit_at` is used, and no citation points to a file captured after `audit_at`.
+5. **Linking.** A resource belongs to the subject through a current or historical email, phone, email hash or `user_id`. A name never links on its own, and a direct identifier beats a trace-id join.
+6. **Policy.** Each resource gets a category and the required end state from `deletion_rules.csv` (delete, redact, anonymize, retain, tombstone, block restore, disable flow).
+7. **Status and steps.** `INCOMPLETE` if a violation is proven and citable, otherwise `COMPLETE` when the required state is verified. Steps are findings, then remediation, then verification, in the order the specification fixes. Findings cite a file; remediation and verification steps use an empty `evidence_id`.
+8. **Checks.** `python3 code/evaluation/main.py --invariants` checks the output contract (header, order, step numbering, citations dated at or before `audit_at`, and others).
+
+**Where an LLM is used.** Only for request intent (`claude-haiku-5-5`) and for reading screenshots and PDFs (`claude-opus-5-5`, two reads per file). The image reads were done once; the agreed facts (ids and hashes only) are committed in `code/extractions/`, so a normal run makes no image calls. The model never decides a status, a link, a step or a citation. Replies are checked against a schema and cached, and calls are capped per run (the final run made 518 intent calls for about $0.028).
+
+**Principle.** Evidence beats assumption and nothing is guessed. A step that cannot be proven or cited is left out, which favours precision over recall. Account links that evidence does not give are not guessed (default `LINK_FALLBACK=omit`).
+
+**Measured results** (details in `code/evaluation/evaluation_report.md`):
+- 32 public samples, deterministic mode: status 29 of 32, step precision .968, recall .793, F1 .872.
+- Six custom scenarios (eight rows, `python3 code/evaluation/main.py --custom`): 8 of 8 match.
+- 518 evaluation requests: COMPLETE 152, INCOMPLETE 356, NOT_APPLICABLE 10. Reruns, with and without the LLM, give a byte-identical `output.csv`. All invariants pass.
+
+**Known gaps** (see `docs/ASSUMPTIONS.md`):
+- 272 cases get no account step because no evidence links the account and the guess mode is off (rows 26 and 27).
+- Four text files (evidence_56, 57, 59, 61) are not read and are used only by samples 04, 06, 08 and 10; evidence_58 prints `support_001`, an id no other file names, so it is dropped (sample 07).
+- Assumption I2 (`support_records` is a support message) has no sample support (row 9).
+- Two changes were measured and not adopted: a relaxed citation rule (Rule E, 8 cases, 18 more steps) and `COMPLETE []` for cases with no resources (0 of the 518 affected); see the T19 sections.
