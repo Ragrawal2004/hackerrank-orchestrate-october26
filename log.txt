@@ -1594,3 +1594,62 @@ branch=feature/agent
 repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
 worktree=main
 parent_agent=none
+
+## [2026-10-25T01:47:25Z] User edited .env LINK_FALLBACK via sed
+
+User Prompt (verbatim, secrets redacted):
+<bash-input>sed -i '' 's/^LINK_FALLBACK=guess$/LINK_FALLBACK=omit/' ~/hackerrank-orchestrate-october26/.env</bash-input>
+
+Agent Response Summary:
+User ran a shell command directly that changes LINK_FALLBACK from guess to omit in the uncommitted .env. No agent action was requested; logged and acknowledged.
+
+Actions:
+* none (user-run command only)
+
+Context:
+tool=Claude Code
+model=claude-sonnet-5-5
+branch=feature/agent
+repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
+worktree=main
+parent_agent=none
+
+## [2026-10-25T00:00:00Z] Assumption audit (read-only, no code changes)
+
+User Prompt (verbatim, secrets redacted):
+No code changes. List every place in the code or SPEC where we assume something instead of reading it from evidence (for example: the ID-prefix category fallback for 3 cases, "unsure means DELETION" for intent, U7 partial checkpoints reopening a resource, support_records as a support message, BLOCKED meaning restore is blocked (A-1), O-2, O-3, O-4, TR2, B1 and the other open assumptions in SPEC). For each give: where it is, how many of the 518 cases it affects, whether it can change a status or only a step, and whether any sample gold confirms it. One table. Do not read or print .env.
+
+Agent Response Summary:
+Ran read-only scratch scripts (outside the repo, --no-llm, no .env) that tag each assumption in the 518 evaluation cases and the 32 samples and flip each one to see whether any status moves. Reported one table. No repo files were changed other than this log entry.
+
+Actions:
+* scratchpad assume_audit.py / assume_explore.py (read-only runs)
+* appended this log entry
+
+Context:
+tool=Claude Code
+model=claude-sonnet-5-5
+branch=feature/agent
+repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
+worktree=main
+parent_agent=none
+
+## [2026-10-25T00:00:00Z] Save assumptions audit to docs/ASSUMPTIONS.md and commit
+
+User Prompt (verbatim, secrets redacted):
+Save this assumptions table, exactly as you produced it plus the "what this table shows" and "caveats" sections, to docs/ASSUMPTIONS.md. Add a short header: purpose (every place we assume instead of reading evidence, with case counts and sample support), the date, and the rule "evidence beats assumption; if a sample gold contradicts an assumption, we change the assumption". Also add a final section "Open for T19": #19 U6 (contradicted by sample gold), #9 I2 (case_297), #24 (120 unciteable cases, not measured), #4 (check after the final LLM run). No code changes. Do not read .env. Then commit only docs/ASSUMPTIONS.md and log.txt by name. Message: "docs: assumptions audit (28 items, case counts, sample support)". Do not use git add . or -A. Show git log --oneline -3 and git status.
+
+Agent Response Summary:
+Wrote docs/ASSUMPTIONS.md with header, the 28-row table, the two sections and Open for T19. Staged and committed only that file and log.txt by name.
+
+Actions:
+* wrote docs/ASSUMPTIONS.md
+* git add docs/ASSUMPTIONS.md log.txt; git commit
+
+Context:
+tool=Claude Code
+model=claude-sonnet-5-5
+branch=feature/agent
+repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
+worktree=main
+parent_agent=none
