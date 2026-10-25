@@ -158,14 +158,25 @@ Before submitting, confirm that:
 
 ## Setup and run (this solution)
 
-Python 3 standard library only (no install step). `pdftotext` and an `ANTHROPIC_API_KEY` environment variable are only needed by later pipeline stages.
+**Setup.** Python 3 standard library only, so there is nothing to install. `pdftotext` (poppler) is needed to read the PDF evidence. `ANTHROPIC_API_KEY` is optional: without it (or with `--no-llm`) request intent comes from the deterministic prefilter and nothing is sent anywhere. Set it in the environment or in an uncommitted `.env` file at the repository root; never commit it.
+
+**Produce `output.csv`.** `output.csv` is produced by `python3 code/main.py`. It reads the provided dataset folder and writes `output.csv` at the repository root (518 rows, sorted by the numeric part of `case_id`).
 
 ```bash
-python3 code/main.py                       # writes output.csv at the repo root
+python3 code/main.py                        # final run: Haiku classifies intent, writes output.csv
+python3 code/main.py --no-llm               # same pipeline with the deterministic prefilter only
 python3 code/main.py --out /path/out.csv --cases case_33,case_34
-python3 -m unittest discover -s code/tests -t code -v   # run the tests
-python3 code/evaluation/main.py                         # score output.csv against the 32 sample answers
-python3 code/evaluation/main.py --custom                # run the synthetic custom cases CC1-CC6 (needs no provided data)
+python3 -m unittest discover -s code/tests -t code -v       # run the tests
+python3 code/evaluation/main.py --invariants --pred output.csv    # check the output contract
+python3 code/evaluation/main.py --pred SAMPLE_OUT.csv --gold dataset/sample_output.csv   # score a run over the 32 public samples
+python3 code/evaluation/main.py --custom                    # run the synthetic custom cases CC1-CC6
+python3 code/evaluation/usage_report.py --usage runs/usage.jsonl --out code/evaluation/usage_report.md   # token and cost report
 ```
 
-Flags: `--dataset DIR`, `--out FILE`, `--cases IDS`, `--link-fallback guess|omit`, `--category-llm on|off`, `--no-llm`, `--cold`. Environment: `LINK_FALLBACK` (`omit` by default; `guess` opts in to low-confidence account steps), `CATEGORY_LLM`, `GHOST_INTENT_MODEL`, `GHOST_CATEGORY_MODEL`, `GHOST_SCREENSHOT_MODEL`, `ANTHROPIC_API_KEY`; CLI flags override env values. Rows are sorted by the numeric part of `case_id`. Right now the pipeline is a stub that marks every case `NOT_APPLICABLE`.
+To score the samples, run the pipeline on a dataset folder whose `deletion_requests.csv` is a copy of `sample_deletion_requests.csv` (the other dataset files alongside) and pass that run's `--out` file as `--pred`.
+
+**Flags.** `--dataset DIR`, `--out FILE`, `--cases IDS`, `--link-fallback guess|omit`, `--category-llm on|off`, `--no-llm`, `--cold` (ignore the LLM response cache).
+
+**Environment variables** (names only; CLI flags override them): `ANTHROPIC_API_KEY`, `LINK_FALLBACK` (`omit` by default; `guess` opts in to low-confidence account steps), `CATEGORY_LLM` (`off` by default), `GHOST_INTENT_MODEL`, `GHOST_CATEGORY_MODEL`, `GHOST_SCREENSHOT_MODEL`, `GHOST_RUNS_DIR` (diagnostics, usage log and response cache; default `runs/`), `GHOST_EXTRACTIONS_DIR`.
+
+Screenshots and PDFs are read from the committed `code/extractions/` (agreed facts, ids and hashes only), so a run makes no image calls. Per-run diagnostics go to `runs/diagnostics.jsonl` and LLM usage to `runs/usage.jsonl`. Design and decisions are in `docs/` (`SPEC.md`, `DESIGN.md`, `ASSUMPTIONS.md`); results are in `code/evaluation/evaluation_report.md` and `code/evaluation/usage_report.md`.

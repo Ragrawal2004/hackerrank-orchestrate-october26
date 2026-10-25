@@ -2001,3 +2001,45 @@ branch=feature/agent
 repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
 worktree=main
 parent_agent=none
+
+## [2026-10-25T08:07:20Z] T20a final run with Haiku intent, reports and README
+
+User Prompt (verbatim, secrets redacted):
+Task T20a: final run and reports. Time-box: plan in 10 minutes, finish by 14:15 IST. No commit until I say OK. Do not touch dataset/ or .env contents (never print .env). LLM approval: real calls ARE approved for intent only (claude-haiku-5-5), hard caps max_calls 700 and max_usd 1.50. Screenshots/PDFs must use the committed code/extractions (0 image calls); if any image call would happen, stop and tell me. Steps: 1 preflight (status clean except output.csv, LINK_FALLBACK resolves to omit); 2 final run with LLM into a FRESH GHOST_RUNS_DIR, writing output.csv at the repo root, report calls/tokens/cost/errors/fallbacks/cache hits; 3 compare with a --no-llm run, list status/steps differences, all NOT_APPLICABLE cases and negation overrides, flag status flips; 4 run --invariants and a second warm-cache run with sha256 of both outputs; 5 generate code/evaluation/usage_report.md; 6 fill T20 placeholders in evaluation_report.md with real numbers only; 7 fix README.md (no stub wording, how to run, env var names only); 8 append the log.txt entry. Plan first, wait for OK before any real LLM call.
+(Follow-up: "go. Approved as planned ... Extra: in step 4, show me the full list of status flips and negation overrides in the final message, with case ids. Do not commit.")
+
+Agent Response Summary:
+Planned, then ran: link fallback resolved to omit, key present. A scratch wrapper capped intent at 700 calls / 1.50 USD and screenshots at 0 calls. Final run: 518 intent calls on claude-haiku-5-5 (381 real, 137 cache hits, 1 BadResponse SchemaError on case_66 handled by prefilter fallback), 181661 input and 19972 output tokens, cost 0.0282 USD. Output identical to the --no-llm run (0 flips); NOT_APPLICABLE is 533-542; invariants PASS; warm second run had 0 real calls and an identical sha256. Wrote usage_report.md, filled evaluation_report sections 1, 7, 8, rewrote the README run section. Nothing committed.
+
+Actions:
+* ran scratch wrapper run_capped.py (no repo change), --no-llm baseline, final LLM run, warm second run
+* ran code/evaluation/main.py --invariants and usage_report.py
+* wrote code/evaluation/usage_report.md, output.csv; edited code/evaluation/evaluation_report.md, README.md
+
+Context:
+tool=Claude Code
+model=claude-sonnet-5-5
+branch=feature/agent
+repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
+worktree=main
+parent_agent=none
+
+## [2026-10-25T08:17:17Z] T20a commit, development-time usage section, backup
+
+User Prompt (verbatim, secrets redacted):
+OK to commit T20a on feature/agent, with one addition first: in code/evaluation/usage_report.md add a short "Development-time LLM usage" section with the totals (calls, tokens, cost by model/purpose) from the earlier runs/usage.jsonl (the repo runs/ dir, read-only; the Opus screenshot/PDF reads and bake-off), clearly separated from the final run. Real numbers only. If runs/usage.jsonl is missing or unreadable, say so in the section instead. Also this commit includes output.csv (final, sha256 ea379389...) - stage it. Stage ONLY README.md, code/evaluation/evaluation_report.md, code/evaluation/usage_report.md, log.txt, output.csv. First run git status --short and confirm no .pyc, runs/ or dataset/ files are staged. Commit message: "T20a: final LLM run output.csv, usage report, evaluation report numbers, README" with a short body, ending with the Co-Authored-By and Claude-Session lines. Then run ~/orchestrate-backup/backup.sh and show git log --oneline -3 and sha256 of output.csv.
+
+Agent Response Summary:
+Summarized runs/usage.jsonl (earlier Haiku intent run), runs/smoke/usage.jsonl and the two bake-off logs found outside the repo in /tmp/bakeoff (the Opus and Sonnet screenshot reads are not in runs/usage.jsonl). Appended the section to usage_report.md (development total 444 calls, 0.9438 USD, Opus 0.6710, Sonnet 0.2446, Haiku 0.0282). Staged the five named paths, committed, ran the backup.
+
+Actions:
+* read-only summary of four usage logs; appended to code/evaluation/usage_report.md
+* git add (named paths), git commit, ~/orchestrate-backup/backup.sh
+
+Context:
+tool=Claude Code
+model=claude-sonnet-5-5
+branch=feature/agent
+repo_root=/Users/rounakagrawal/hackerrank-orchestrate-october26
+worktree=main
+parent_agent=none

@@ -1,10 +1,10 @@
 # Evaluation report
 
-Status: **draft written at T18** (2026-10-25). Sections marked `T20` are filled by the final cold run. Nothing in this file is estimated: every number was measured by the command given next to it, and a section says so when a number is not yet measured.
+Status: **final run recorded at T20a** (2026-10-25). Sections 7 and 8 come from the final run with the Haiku intent classifier. Nothing in this file is estimated: every number was measured by the command given next to it, and a section says so when a number is not yet measured.
 
 ## 1. Scope and method
 
-- **Pipeline under test:** `python3 code/main.py`, deterministic mode (`--no-llm`, link fallback `omit`, the default). Intent comes from the deterministic prefilter; screenshots and PDFs use the committed extractions in `code/extractions/`. The final run with the LLM intent classifier is a T20 item.
+- **Pipeline under test:** `python3 code/main.py`, link fallback `omit` (the default). Sections 2 to 6 were measured in deterministic mode (`--no-llm`, intent from the prefilter); section 7 records the final run with the Haiku intent classifier, which gave the same `output.csv`. Screenshots and PDFs use the committed extractions in `code/extractions/` in both modes (0 image calls).
 - **Three evidence sources, kept apart so that one cannot inflate another:**
   1. the 32 public samples scored against `dataset/sample_output.csv` (section 2);
   2. six hand-built custom scenarios run through the real CLI against a synthetic dataset (section 3);
@@ -117,10 +117,32 @@ Full audit: 28 rows, `docs/ASSUMPTIONS.md` (measured at commit `f7b406c`, `--no-
 | **Dead branches (0 evaluation cases)** | 3, 6 (U7), 8, 11, 17, 28 | No effect today |
 | **Not measured against gold** | 24 (unciteable: 120 E), 26, 27 | |
 
-## 7. Invariants and determinism (T20)
+## 7. Invariants and determinism (final run, 2026-10-25)
 
-To be filled by the final cold run: 518 rows, unique and in numeric order; `python3 code/evaluation/main.py --invariants` result; byte-identical `output.csv` across two runs; counts of `no_steps`, `retained_missing`, `link_unresolved`; intent agreement rate between the LLM and the prefilter. `<!-- T20 -->`
+Final run: `python3 code/main.py` with `ANTHROPIC_API_KEY` set, a fresh runs directory, hard caps of 700 intent calls and $1.50 (and 0 screenshot calls), `LINK_FALLBACK=omit`.
+
+| Check | Result | Command |
+|---|---|---|
+| Rows | 518, unique, numeric `case_id` order | `python3 code/evaluation/main.py --invariants --pred output.csv` |
+| Invariants S1-S9, P1-P5, E1, A1 | all PASS (`RESULT: PASS`) | same |
+| Status counts | COMPLETE 152, INCOMPLETE 356, NOT_APPLICABLE 10 | run summary |
+| Byte-identical output | run 1 (cold), run 2 (warm cache, 0 real calls) and the `--no-llm` run all have sha256 `ea379389f5ccae054f441e0e4b18f4abda024223b4d3c5f1bb3aa09c076ece75` | `shasum -a 256` |
+| `no_steps` (INCOMPLETE with `[]`) | 5 cases, all excused in diagnostics | run summary |
+| `retained_missing` | 2 cases (case_34, case_55), 2 records | run summary |
+| `link_unresolved` | 272 (`omit` mode, no guessed account step) | run summary |
+| Intent agreement, LLM vs prefilter | 100.0% (517 of 517 labelled); 0 disagreements | run summary |
+| NON_DELETION | 10 cases (case_533 to case_542), all via the prefilter negation override, which agreed with the LLM label | run summary |
+| LLM fallback to the prefilter | 1 of 518 (case_66: a reply that failed schema validation, `bad_response_kind=SchemaError`; the prefilter label DELETION was used) | `diagnostics.jsonl`, `usage.jsonl` |
+
+Notes. The LLM changed no status and no step in any case compared with the `--no-llm` run. The one fallback (case_66) depends on thread timing: identical request texts are sent concurrently, so a failed call and a successful one can race; the label and the output are the same either way, only the diagnostics differ (the warm second run had 0 fallbacks).
 
 ## 8. Cost summary (T20)
 
-T18 made **no LLM calls**. The cost, token and call tables come from `code/evaluation/usage_report.md` after the final `--cold` run: model providers and names, call counts, input and output tokens, total and average tokens per request (÷ 518), estimated total and per-request cost, per model and overall. `<!-- T20: paste from usage_report.md -->`
+Source: `code/evaluation/usage_report.md`, made from this run's `usage.jsonl` with `python3 code/evaluation/usage_report.py --usage <run usage.jsonl> --run-id run-20261025T080414Z --requests 518`.
+
+| Provider | Model | Calls | Cache hits | Errors | Input tokens | Output tokens | Cost (USD) |
+|---|---|---|---|---|---|---|---|
+| Anthropic | claude-haiku-5-5 (intent) | 381 | 137 | 1 | 181,661 | 19,972 | 0.0282 |
+| | **Total** | 381 | 137 | 1 | 181,661 | 19,972 | 0.0282 |
+
+Total tokens 201,633; average 389.3 tokens per request (÷ 518); estimated cost $0.000054 per request. Price used: input $0.10 and output $0.50 per million tokens (as of 2026-10-24, source in the usage report). The 137 cache hits are repeated identical request texts within the run. The run made no screenshot or PDF calls: those facts come from the committed `code/extractions/`, produced earlier in T17 and not part of this run's usage.
