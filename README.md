@@ -1,54 +1,52 @@
 # Ghost Data Audit Agent
 
-*An evidence-first agent for answering one deceptively simple question: when a person asks for their data to be deleted, how do we know it is really gone?*
+*When someone asks for their data to be deleted, how do you know it's really gone? This project tries to answer that with evidence, not a confident guess.*
 
-![HackerRank Orchestrate certificate — Rounak Agrawal, rank 127 of 4,094](docs/certificate.png)
+![HackerRank Orchestrate certificate: Rounak Agrawal, rank 127 of 4,094](docs/certificate.png)
 
-Built solo for **HackerRank Orchestrate — October 2026**, on the challenge **“Ghost Data Still Exists.”** I finished **#127 out of 4,094 participants (top 3.1%)**.
+I built this on my own for **HackerRank Orchestrate, October 2026**, for the challenge "Ghost Data Still Exists". I finished **#127 out of 4,094 participants (top 3.1%)**.
 
 ---
 
-## Why I built this
+## Why this problem is hard
 
-A deletion workflow can say `Complete` and still leave personal data behind. A copy might remain in a database replica, a support attachment, an export, an analytics index, an archive, or a backup. A sync or restore process can even bring a record back after it has been deleted from its original system.
+A deletion system can say "Complete" and still leave personal data behind. A copy might be sitting in a database replica, a support attachment, an export, a search index or a backup. Or a sync job might quietly restore a record after it was deleted.
 
-The challenge was to investigate that gap using a deliberately messy evidence pack: SQL snapshots, JSON exports, several kinds of logs, ledgers, screenshots, and PDFs. The task covered **518 deletion requests**. For each one, the agent had to decide whether deletion was actually requested, work out what data still existed at the audit time, apply the relevant policy, and produce an ordered plan with evidence behind every finding.
+The challenge gave me 518 deletion requests and a messy evidence pack: SQL snapshots, JSON exports, several kinds of logs, ledgers, screenshots and PDFs. For each request, the agent had to decide whether deletion was really asked for, work out what still existed at the audit time, apply the right policy, and write an ordered plan with evidence behind every finding.
 
-I wanted the system to behave less like a chatbot giving a confident answer and more like an auditor showing its working. A conclusion should be traceable to a record, a timestamp, and a rule. When the evidence is not enough, the system should say less rather than fill the gap with a guess.
+I didn't want a chatbot that sounds sure of itself. I wanted something closer to an auditor who shows their working: every conclusion points to a record, a timestamp and a rule. And when the evidence isn't enough, the agent should say less instead of guessing.
 
 ## At a glance
 
 | | |
 |---|---|
-| Challenge | HackerRank Orchestrate — October 2026 |
-| Result | **#127 / 4,094 — top 3.1%** |
+| Challenge | HackerRank Orchestrate, October 2026 |
+| Result | **#127 / 4,094 (top 3.1%)** |
 | Requests processed | **518** |
-| Evidence readers | **8 specialised adapters** |
+| Evidence readers | **8 adapters** |
 | Possible outcomes | `COMPLETE`, `INCOMPLETE`, `NOT_APPLICABLE` |
-| Main implementation | Python 3; standard library for the core pipeline |
+| Language | Python 3 (standard library for the core pipeline) |
 | Optional model provider | Anthropic API |
-| Output | `output.csv` — one row per request |
+| Output | `output.csv`, one row per request |
 
-## What the agent does
+## What it does for each request
 
-For every request, the agent:
+1. **Checks that deletion was really requested.** Asking to update an email, download data or change marketing preferences isn't a deletion request.
+2. **Works out who the person is.** It uses current and past emails, phone numbers, email hashes and user IDs.
+3. **Reads the evidence and links records to that person.** A name alone is never enough.
+4. **Rebuilds the state of each resource at that request's `audit_at` time.**
+5. **Applies the rule from `deletion_rules.csv`.** For example: delete, redact, anonymise, retain, block restore, or disable a data flow.
+6. **Writes findings, fixes and checks in the required order,** with evidence references wherever a finding can be backed up.
 
-1. Checks whether the person actually asked for deletion. A request to update an email address, download data, or change marketing preferences is not automatically a deletion request.
-2. Resolves the person using current and historical identity information, including email addresses, phone numbers, email hashes, and user IDs.
-3. Reads the supplied evidence and connects records to the person without relying on names alone.
-4. Reconstructs the state of each resource at that request's `audit_at` time.
-5. Applies the relevant rule from `deletion_rules.csv` — for example, delete, redact, anonymise, retain, block restore, or disable a data flow.
-6. Produces findings, remediation actions, and verification steps in the required order, with evidence references wherever a finding can be supported.
+There are three possible statuses:
 
-The output status has three possible values:
-
-- **`COMPLETE`** — the required end states are verified by eligible evidence.
-- **`INCOMPLETE`** — the agent finds a citable policy violation, an unverified deletion requirement, or no sufficiently supported state to establish completion.
-- **`NOT_APPLICABLE`** — the request is not actually asking for deletion; its `steps_json` is `[]`.
+- **`COMPLETE`**: the required end states are confirmed by evidence the agent is allowed to use.
+- **`INCOMPLETE`**: the agent found a policy violation it can cite, a deletion requirement it couldn't verify, or no solid evidence that deletion finished.
+- **`NOT_APPLICABLE`**: the request isn't a deletion request, so `steps_json` is `[]`.
 
 ## How it works
 
-The core pipeline is deliberately split into small stages. The evidence is normalised first; each request is then evaluated against that shared fact store.
+I split the pipeline into small stages. The evidence is cleaned up and stored once, and each request is then checked against that shared set of facts.
 
 ```text
 dataset/
@@ -74,9 +72,9 @@ request ──► intent ──► identity resolution │
                     evaluation / invariants
 ```
 
-### 1. Read different evidence formats consistently
+### 1. Read different evidence formats the same way
 
-The eight adapters turn different source formats into a common set of observations. They recognise files from their structure, not just their filenames.
+Each adapter turns one kind of source into a common set of observations. They recognise files by their structure, not just by file name.
 
 | Adapter | Evidence it handles |
 |---|---|
@@ -86,59 +84,59 @@ The eight adapters turn different source formats into a common set of observatio
 | `inventory_sql` | Inventory SQL records |
 | `observability_log` | Observability logs |
 | `trace_log` | Trace and request logs |
-| Ledger readers | JSON, log, and plain-text ledgers |
+| Ledger readers | JSON, log and plain-text ledgers |
 | `multimodal` | Screenshots and PDFs |
 
-Each reader extracts observations such as the resource, its state, the timestamp on the record, and identifiers that may connect it to a person. The adapters write those facts into a shared, in-memory SQLite store. They do not make the final deletion decision.
+An adapter pulls out things like the resource, its state, the timestamp on the record and any identifiers that might connect it to a person. It writes those facts into a shared in-memory SQLite store. It never makes the final deletion decision.
 
-### 2. Resolve identities using evidence
+### 2. Match people to records using evidence
 
-An email in a deletion request is matched against the current identity snapshot and the historical identity audit log. That gives the agent a set of current and former identifiers to search for in older systems.
+The email in a deletion request is checked against the current identity snapshot and the history of identity changes. That gives the agent a set of current and former identifiers to look for in older systems.
 
-The implementation uses exact identifier matches and supported joins. A name on its own is not enough to link a resource to someone. Where evidence does not support an account link, the default is to omit the guessed account step rather than invent a connection.
+Matching uses exact identifiers and supported joins. A name on its own can't link a resource to someone. If the evidence doesn't support an account link, the default is to leave the account step out instead of making up a connection.
 
-### 3. Respect both clocks
+### 3. Keep track of two clocks
 
-One of the most important design decisions is the **two-clock rule**:
+This is the design decision I care about most. There are two different times to think about:
 
-- The timestamp on a record (`record_at`) determines whether that observation can be used to reconstruct state and link a resource at `audit_at`.
-- The evidence file's manifest capture time determines whether that file is allowed to be cited for the case.
+- The **timestamp on the record** (`record_at`) decides whether an observation can be used to rebuild the state and link a resource at `audit_at`.
+- The **capture time of the evidence file** in the manifest decides whether that file can be cited for the case.
 
-This distinction matters when a file was collected later but contains an earlier-dated record. An eligible record may help reconstruct historical state, but a file captured after `audit_at` is not used as a citation for that audit. The agent does not treat a later workflow status as proof of what was true earlier.
+The difference matters when a file was collected later but contains an older record. The older record can still help rebuild what was true back then, but a file captured after `audit_at` can't be cited for that audit. And a later workflow status is never treated as proof of what was true earlier.
 
-### 4. Apply policy in deterministic code
+### 4. Apply policy in plain code
 
-For each linked resource, the policy engine determines its category and required end state from `deletion_rules.csv`. Depending on the rule, that may mean deleting a record, redacting identifiers, anonymising it, retaining it, preserving a permitted tombstone, blocking a restore, or disabling an active data flow.
+For each linked resource, the policy engine finds its category and the required end state from `deletion_rules.csv`. Depending on the rule, that could mean deleting a record, redacting identifiers, anonymising it, keeping it, keeping a permitted tombstone, blocking a restore or disabling an active data flow.
 
-Activity logs and reported workflow results are treated as claims rather than proof of current state. Explicit recreation events are handled as a special case; otherwise, the latest usable observation for a resource is evaluated against the required state. Where a complete snapshot can establish absence by omission, that is handled separately from a partial export or inventory that cannot prove absence.
+Activity logs and reported results are treated as claims, not proof of the current state. Explicit recreation events are a special case. Otherwise, the latest usable observation of a resource is compared with the required state. A complete snapshot can prove something is absent because it's missing from the snapshot, but a partial export or an inventory can't, so those are handled separately.
 
-### 5. Produce an auditable sequence
+### 5. Write steps someone can audit
 
-The step generator writes the result in three phases:
+The step writer produces three phases, in this order:
 
-1. `FINDING` — what the evidence shows.
-2. `REMEDIATION` — what needs to be changed.
-3. `VERIFICATION` — what must be checked afterward.
+1. `FINDING`: what the evidence shows.
+2. `REMEDIATION`: what needs to change.
+3. `VERIFICATION`: what to check afterwards.
 
-Findings cite the supporting evidence. Remediation and future verification steps in an `INCOMPLETE` case use an empty `evidence_id`, because those actions have not happened yet. Steps follow the challenge's required phase and operation ordering, and numbering starts at 1 with no gaps.
+Findings cite their evidence. Fixes and future checks in an `INCOMPLETE` case use an empty `evidence_id`, because they haven't happened yet. Steps follow the order the challenge requires, and the numbering starts at 1 with no gaps.
 
-## Where the LLM fits — and where it does not
+## Where the LLM is used, and where it isn't
 
-I deliberately kept the model away from the decisions that need to be auditable.
+I kept the model away from every decision that has to be auditable.
 
-- **Request intent:** the final run used `claude-haiku-5-5` to help classify whether a request was actually asking for deletion. A deterministic prefilter catches explicit negation; that negation takes priority. If a model response is missing or fails validation, the prefilter provides the fallback.
-- **Screenshots and PDFs:** these were read during development using a multimodal model. The agreed extracted facts (IDs and hashes) are stored under `code/extractions/`, so a normal run reuses those facts instead of making the same image calls again.
-- **Core audit decisions:** identity linking, resource state, policy application, status, step construction, ordering, and evidence citations are handled by code. The model does not decide whether deletion is complete or invent a citation.
+- **Request intent:** the final run used `claude-haiku-5-5` to help decide whether a request was really asking for deletion. A simple word-based prefilter catches explicit "do not delete" wording, and that always wins. If the model's reply is missing or fails validation, the prefilter's answer is used.
+- **Screenshots and PDFs:** I read these once during development with a multimodal model. The agreed facts (IDs and hashes) are saved in `code/extractions/`, so a normal run reuses them and makes no image calls.
+- **Everything else:** identity linking, resource state, policy, status, step building, ordering and citations are all code. The model never decides whether deletion is complete, and it never makes up a citation.
 
-Optional category disambiguation is available behind `CATEGORY_LLM`, but it is **off by default**. The main pipeline can also run without an API key or with `--no-llm`; in that mode, request intent uses the deterministic prefilter.
+There's an optional category-disambiguation mode behind `CATEGORY_LLM`, but it's **off by default**. The pipeline also runs with no API key, or with `--no-llm`, and then intent comes from the prefilter alone.
 
-## Results and evaluation
+## Results
 
-I kept the public-sample results, synthetic tests, and full-dataset checks separate because they answer different questions.
+I kept the public samples, the synthetic tests and the full-dataset checks separate, because each one answers a different question.
 
-### Public sample evaluation
+### The 32 public samples
 
-The implementation was scored against the 32 public sample answers in deterministic mode (`--no-llm`, with the default `LINK_FALLBACK=omit`).
+Scored in deterministic mode (`--no-llm`, with the default `LINK_FALLBACK=omit`).
 
 | Metric | Result |
 |---|---:|
@@ -146,18 +144,16 @@ The implementation was scored against the 32 public sample answers in determinis
 | Step precision | **0.9684** |
 | Step recall | **0.7927** |
 | Step F1 | **0.8718** |
-| Field accuracy on aligned steps | **1.0000** for each measured field |
+| Field accuracy on matched steps | **1.0000** for every field measured |
 | Exact sequence match | **10 / 32 (31.25%)** |
 
-The remaining differences are documented rather than hidden. Most step-level misses come from links or evidence that the current implementation intentionally does not infer, or from evidence formats and records that are not fully covered yet. The three status mismatches are also recorded in the evaluation report.
+The gaps are written up in the evaluation report instead of being hidden. Most of the missing steps come from links or evidence the pipeline chooses not to guess, or from file formats it doesn't fully cover yet. The three status mismatches are in the report as well.
 
-### Custom scenarios
+### My own test cases
 
-Six custom scenarios covering eight output rows are generated from synthetic, self-contained datasets and run through the actual CLI. **All 8 of 8 rows matched their expected results**, with no invariant violations. These tests are useful regression checks, but they are not a substitute for performance measurement on the challenge's full data distribution.
+I wrote six custom scenarios (eight output rows) from small synthetic datasets and ran them through the real command line. **All 8 rows matched what I expected**, with no invariant violations. They're good regression checks, but they don't tell you how the agent performs on the challenge's full data.
 
-### Full 518-request run
-
-The final run produced:
+### The full 518-request run
 
 | Outcome | Requests |
 |---|---:|
@@ -166,55 +162,54 @@ The final run produced:
 | `NOT_APPLICABLE` | 10 |
 | **Total** | **518** |
 
-All output invariants passed: the file had 518 unique requests in numeric case order, the required header, valid step numbering and ordering, and citations that respected the audit-time constraints.
+Every output check passed: 518 unique requests in case order, the right header, valid step numbering and ordering, and citations that respect the audit-time rules.
 
-The cold run, warm-cache rerun, and `--no-llm` run produced byte-identical `output.csv` files. The final model run did not change any status or step compared with the deterministic run.
+A cold run, a rerun with a warm cache and a `--no-llm` run all gave byte-identical `output.csv` files. The final model run didn't change a single status or step compared with the deterministic run.
 
-Detailed methods, error analysis, assumptions, and measurements are in [`code/evaluation/evaluation_report.md`](code/evaluation/evaluation_report.md).
+For methods, error analysis and assumptions, see [`code/evaluation/evaluation_report.md`](code/evaluation/evaluation_report.md).
 
 ## LLM usage and cost
 
-The numbers below come from the committed usage report. Development experiments and the final full-dataset run are kept separate.
+These numbers come from the usage report in the repo. I counted development experiments and the final run separately.
 
 | Run | Model usage | Recorded cost |
 |---|---|---:|
-| Final 518-request run | `claude-haiku-5-5`: 381 calls, 137 cache hits; 181,661 input tokens and 19,972 output tokens | **$0.0282** |
-| Development experiments | Haiku intent tests plus Opus and Sonnet screenshot/PDF comparison runs | **$0.9438** |
-| **Combined recorded usage** | Final run + development experiments | **$0.9720** |
+| Final 518-request run | `claude-haiku-5-5`: 381 calls and 137 cache hits; 181,661 input tokens, 19,972 output tokens | **$0.0282** |
+| Development experiments | Haiku intent tests, plus Opus and Sonnet screenshot and PDF comparison runs | **$0.9438** |
+| **Total recorded** | Final run + development | **$0.9720** |
 
-For the final run, that is about **389.3 tokens per request** and **$0.000054 per request**. No screenshot or PDF model calls were made during that final run; the extracted facts were already available in `code/extractions/`.
+For the final run that works out to about **389.3 tokens** and **$0.000054** per request. The final run made no screenshot or PDF calls, because the extracted facts were already in `code/extractions/`.
 
-These are measured estimates from the run logs and the model prices recorded in [`code/evaluation/usage_report.md`](code/evaluation/usage_report.md), not a claim that every possible future run will cost the same amount.
+These are estimates from my run logs and the prices recorded in [`code/evaluation/usage_report.md`](code/evaluation/usage_report.md). A future run won't necessarily cost exactly the same.
 
-## Run it locally
+## Run it yourself
 
-### Requirements
+### What you need
 
-- Python 3.
-- The Python standard library is enough for the deterministic core pipeline.
-- An Anthropic API key and the pinned SDK in `requirements.txt` are needed to make live model calls.
-- `pdftotext` (from Poppler) is needed only if you are re-running PDF text extraction; the committed screenshot/PDF extractions are reused in a normal run.
+- Python 3. The standard library is enough for the core pipeline.
+- To make live model calls: an Anthropic API key and the pinned SDK from `requirements.txt`.
+- `pdftotext` (from Poppler), only if you want to re-run PDF text extraction. A normal run reuses the saved extractions.
 
-### 1. Clone the repository
+### 1. Clone it
 
 ```bash
 git clone https://github.com/Ragrawal2004/hackerrank-orchestrate-october26.git
 cd hackerrank-orchestrate-october26
 ```
 
-### 2. Run without an API key
+### 2. Run it without an API key
 
-This uses the deterministic intent prefilter and does not make LLM calls:
+This uses the prefilter for intent and makes no LLM calls:
 
 ```bash
 python3 code/main.py --no-llm
 ```
 
-The command reads the files under `dataset/` and writes `output.csv` in the repository root.
+It reads the files in `dataset/` and writes `output.csv` in the repository root.
 
-### 3. Run with Anthropic intent classification (optional)
+### 3. Run it with Anthropic intent classification (optional)
 
-Create and activate a virtual environment, then install the pinned SDK:
+Set up a virtual environment and install the pinned SDK:
 
 ```bash
 python3 -m venv .venv
@@ -222,38 +217,38 @@ source .venv/bin/activate
 python3 -m pip install -r requirements.txt
 ```
 
-Set the API key in your shell (or in a local, uncommitted `.env` file at the repository root):
+Then set your key in the shell, or in a local `.env` file that you never commit:
 
 ```bash
 export ANTHROPIC_API_KEY="your_api_key"
 python3 code/main.py
 ```
 
-Do not commit `.env`, API keys, or other credentials. The repository includes `.env.example` as a reference for configuration names.
+Never commit `.env`, API keys or other credentials. `.env.example` shows the setting names.
 
-### Useful commands
+### Handy commands
 
 ```bash
-# Run the full dataset with the deterministic intent fallback
+# Full dataset, prefilter only
 python3 code/main.py --no-llm
 
-# Run the full dataset with the configured LLM intent classifier
+# Full dataset, with the LLM intent classifier
 python3 code/main.py
 
-# Run selected cases and write to a separate output file
+# A few cases, written to a separate file
 python3 code/main.py --out /tmp/selected.csv --cases case_33,case_34
 
-# Run the unit and integration tests
+# Unit and integration tests
 python3 -m unittest discover -s code/tests -t code -v
 
-# Check the output contract and evidence-time invariants
+# Check the output format and the evidence-time rules
 python3 code/evaluation/main.py --invariants --pred output.csv
 
-# Run the six custom evaluation scenarios
+# Run the six custom scenarios
 python3 code/evaluation/main.py --custom
 ```
 
-To score the 32 public samples, make a temporary copy of the dataset, replace its `deletion_requests.csv` with `sample_deletion_requests.csv`, run the pipeline against that temporary directory, and compare its output with `dataset/sample_output.csv`:
+To score the 32 public samples, copy the dataset to a temporary folder, swap in `sample_deletion_requests.csv`, run the pipeline on that folder, and compare against the sample answers:
 
 ```bash
 mkdir -p /tmp/ghost-samples
@@ -268,28 +263,28 @@ python3 code/evaluation/main.py \
 
 ## Configuration
 
-CLI flags take precedence over environment variables.
+Command-line flags win over environment variables.
 
-| Setting | Purpose | Default |
+| Setting | What it does | Default |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | Enables live Anthropic API calls | Not set |
-| `LINK_FALLBACK` | Whether to omit or opt into low-confidence account-link guesses | `omit` |
-| `CATEGORY_LLM` | Enables optional LLM category disambiguation | `off` |
-| `GHOST_INTENT_MODEL` | Request-intent model | `claude-haiku-5-5` |
-| `GHOST_CATEGORY_MODEL` | Optional category model | `claude-haiku-5-5` |
-| `GHOST_SCREENSHOT_MODEL` | Screenshot/PDF extraction model | `claude-opus-5-5` |
-| `GHOST_RUNS_DIR` | Diagnostics, usage log, and response-cache directory | `runs/` |
-| `GHOST_EXTRACTIONS_DIR` | Location of cached multimodal extractions | `code/extractions/` |
+| `ANTHROPIC_API_KEY` | Turns on live Anthropic API calls | Not set |
+| `LINK_FALLBACK` | Leave out or guess low-confidence account links | `omit` |
+| `CATEGORY_LLM` | Optional LLM category disambiguation | `off` |
+| `GHOST_INTENT_MODEL` | Model for request intent | `claude-haiku-5-5` |
+| `GHOST_CATEGORY_MODEL` | Model for the optional category step | `claude-haiku-5-5` |
+| `GHOST_SCREENSHOT_MODEL` | Model for screenshot and PDF extraction | `claude-opus-5-5` |
+| `GHOST_RUNS_DIR` | Where diagnostics, the usage log and the response cache go | `runs/` |
+| `GHOST_EXTRACTIONS_DIR` | Where the saved screenshot and PDF facts live | `code/extractions/` |
 
-Useful command-line flags:
+Useful flags:
 
-- `--dataset DIR` — use a different dataset directory.
-- `--out FILE` — write the output to a different path.
-- `--cases IDS` — run a comma-separated list of case IDs.
-- `--link-fallback omit|guess` — override the account-link fallback mode.
-- `--category-llm off|on` — override optional category disambiguation.
-- `--no-llm` — disable live model calls.
-- `--cold` — ignore cached LLM responses for the run.
+- `--dataset DIR` to use a different dataset folder.
+- `--out FILE` to write the output somewhere else.
+- `--cases IDS` to run a comma-separated list of case IDs.
+- `--link-fallback omit|guess` to change how uncertain account links are handled.
+- `--category-llm off|on` to switch the optional category step.
+- `--no-llm` to turn off live model calls.
+- `--cold` to ignore cached LLM responses.
 
 ## Repository layout
 
@@ -299,41 +294,42 @@ Useful command-line flags:
 │   ├── ghost/                 # Pipeline, adapters, identity, policy, LLM gateway
 │   ├── tests/                 # Unit and end-to-end tests
 │   ├── evaluation/            # Scoring, invariants, custom cases, reports
-│   ├── extractions/            # Agreed facts extracted from screenshots and PDFs
+│   ├── extractions/           # Agreed facts from screenshots and PDFs
 │   └── prompts/               # Prompts for intent and multimodal extraction
 ├── dataset/                   # Challenge inputs and evidence files
 ├── docs/
-│   ├── SPEC.md                # Working interpretation of the challenge contract
+│   ├── SPEC.md                # How I read the challenge contract
 │   ├── DESIGN.md              # Design decisions and data model
-│   └── ASSUMPTIONS.md         # Assumptions, impact, and open questions
+│   └── ASSUMPTIONS.md         # Assumptions, their impact, open questions
 ├── ARCHITECTURE.md            # Short architecture and module map
 ├── AGENTS.md                  # Instructions for AI coding agents
 ├── CLAUDE.md                  # Claude Code project notes
-├── problem_statement.md       # Challenge statement
+├── problem_statement.md       # The challenge statement
 ├── requirements.txt           # Pinned optional Anthropic SDK
 └── README.md
 ```
 
-## Known limitations and trade-offs
+## Known limitations
 
-I chose conservative linking and evidence rules, but that also means the implementation has gaps. The most important ones are documented in [`docs/ASSUMPTIONS.md`](docs/ASSUMPTIONS.md) and the evaluation report:
+I chose cautious linking and evidence rules, and the price of that is some gaps. The main ones are written up in [`docs/ASSUMPTIONS.md`](docs/ASSUMPTIONS.md) and the evaluation report:
 
-- With `LINK_FALLBACK=omit` (the default), **272 cases do not receive an account verification step** when the available evidence does not establish a safe account link. This avoids guessing, but it can leave a verification step out.
-- Four text evidence files (`evidence_56`, `evidence_57`, `evidence_59`, and `evidence_61`) are not currently read by the adapters. They affect a small number of the public sample cases.
-- In `evidence_58`, `support_001` appears without a supporting identifier elsewhere in the participant-facing files, so the current known-ID rule does not link it. This is discussed in the sample error analysis.
-- Some policy/category interpretations rely on documented assumptions where the challenge evidence is incomplete. The assumptions audit records which ones are supported by samples and which remain uncertain.
+- With the default `LINK_FALLBACK=omit`, **272 cases get no account verification step** when the evidence doesn't give a safe account link. That avoids guessing, but it means a step can be missing.
+- Four text evidence files (`evidence_56`, `evidence_57`, `evidence_59` and `evidence_61`) aren't read by the adapters yet. They affect a small number of the public sample cases.
+- In `evidence_58`, `support_001` shows up with no supporting identifier anywhere else in the participant files, so the known-ID rule doesn't link it. The sample error analysis covers this.
+- Some policy and category choices rest on documented assumptions, because the evidence is incomplete. The assumptions file says which ones the samples support and which are still uncertain.
 
-I have left these limitations visible because a useful audit system should make its uncertainty inspectable, not hide it behind a confident status.
+I left these gaps visible on purpose. If an audit system is unsure, you should be able to see where.
 
-## Challenge submission notes
+<details>
+<summary>Challenge submission notes</summary>
 
-The challenge submission and this GitHub repository serve different purposes:
+The challenge submission and this repository do slightly different jobs:
 
-- `output.csv` is generated in the repository root by `python3 code/main.py` and can be uploaded separately to the challenge's output slot.
-- `log.txt` is the AI-agent chat transcript requested by the challenge. Keep it local and upload it to the `chat_transcript` slot; it does not need to be part of this public GitHub repository.
-- `code.zip` should contain the runnable solution, prompts, configuration, this `README.md`, and the evaluation reports. It should **not** contain the dataset, virtual environments, caches, credentials, or nested archives.
+- `output.csv` is written to the repository root by `python3 code/main.py`, and was uploaded separately to the challenge.
+- `log.txt` is the AI-agent chat transcript the challenge asked for. I kept it local and uploaded it separately, so it isn't part of this public repo.
+- `code.zip` holds the runnable solution, prompts, configuration, this README and the evaluation reports. It leaves out the dataset, virtual environments, caches, credentials and nested archives.
 
-From the repository root, the package can be created with:
+From the repository root, the package was built with:
 
 ```bash
 zip -r code.zip README.md ARCHITECTURE.md problem_statement.md docs code \
@@ -343,16 +339,18 @@ zip -r code.zip README.md ARCHITECTURE.md problem_statement.md docs code \
      "*.zip" "*.tar" "*.gz" "*.tgz" "*.7z" "*.rar"
 ```
 
-Before submitting, check that `output.csv` has the exact header `case_id,deletion_status,steps_json`, contains one row for every request, and passes the invariant checker. Also make sure no API keys, credentials, or personal data have entered the repository or submission files.
+Before submitting, check that `output.csv` has the exact header `case_id,deletion_status,steps_json`, has a row for every request and passes the invariant checker. Also make sure no API keys, credentials or personal data ended up in the repository or the submission files.
 
-## A few notes before you dive into the code
+</details>
 
-If you want to understand the project without reading every module first, I would start here:
+## Where to start reading
+
+If you'd like to understand the project without opening every module:
 
 1. [`ARCHITECTURE.md`](ARCHITECTURE.md) for the pipeline and module map.
-2. [`docs/DESIGN.md`](docs/DESIGN.md) for the reasoning behind the data model and evidence rules.
-3. [`docs/SPEC.md`](docs/SPEC.md) for the challenge contract and implementation decisions.
-4. [`docs/ASSUMPTIONS.md`](docs/ASSUMPTIONS.md) for the places where the evidence is incomplete and the trade-offs are explicit.
+2. [`docs/DESIGN.md`](docs/DESIGN.md) for why the data model and evidence rules look the way they do.
+3. [`docs/SPEC.md`](docs/SPEC.md) for how I read the challenge contract.
+4. [`docs/ASSUMPTIONS.md`](docs/ASSUMPTIONS.md) for where the evidence is incomplete and the trade-offs are spelled out.
 5. [`code/evaluation/evaluation_report.md`](code/evaluation/evaluation_report.md) and [`code/evaluation/usage_report.md`](code/evaluation/usage_report.md) for the measured results and model usage.
 
-Thanks for taking a look. I built this in a 24-hour challenge, but the central lesson is one I want to keep using in future AI systems: **a useful agent should be able to show why it reached an answer, not just produce one.**
+Thanks for taking a look. I built this in a 24-hour challenge, but the lesson I want to keep for future AI systems is simple: **a good agent should be able to show why it reached an answer, not just give one.**
